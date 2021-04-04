@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <title>NCNG | MOS Vacancy Editor | ArcGIS API for JavaScript 4.18</title>
+
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.18/esri/themes/light/main.css"
+    />
+    <script src="https://js.arcgis.com/4.18/"></script>
+
+    <style>
+      html,
+      body,
+      #viewDiv {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      #info {
+        padding: 14px;
+        border-radius: 5px;
+      }
+
+      #update {
+        padding: 6px;
+      }
+
+      #form {
+        background: #fff;
+      }
+
+      /* replaces esri-widget--panel */
+      .scroller {
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+    </style>
+
+    <script>
+      require([
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/widgets/FeatureForm",
+        "esri/layers/FeatureLayer",
+        "esri/form/FormTemplate",
+      ], function (Map, MapView, FeatureForm, FeatureLayer, FormTemplate) {
+        let highlight, editFeature;
+        const featureLayer = new FeatureLayer({
+          url:
+            "https://ncguardview.nc.gov/server/rest/services/Hosted/FL_NCNG_MOS_Vacancy_03MAR21/FeatureServer/0",
+          outFields: ["*"],
+          formTemplate: {
+            // Autocasts to new FormTemplate
+            title: "NCNG MOS Vacancy",
+            description: "Provide information for MOS",
+            elements: [
+              {
+                // Autocasts to new GroupElement
+                type: "group",
+                label: "MOS",
+                description: "Military Occupational Specialty information",
+                elements: [
+                  {
+                    // Autocasts to new FieldElement
+                    type: "field",
+                    fieldName: "mos",
+                    label: "MOS",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "mos_series",
+                    label: "MOS Series",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "jobtitle",
+                    label: "Job Title",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "vacancy_grade",
+                    label: "MOS Grade/Rank",
+                  },
+                ],
+              }, // end of first group element
+              {
+                type: "group",
+                label: "Unit information",
+                description: "The unit information",
+                elements: [
+                  {
+                    type: "field",
+                    fieldName: "uic",
+                    label: "Unit Identification Code",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "unit",
+                    label: "Unit",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "battalion",
+                    label: "Unit Battalion",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "macom",
+                    label: "Unit Major Command",
+                  },
+                ],
+              }, // end of second group element
+              {
+                type: "group",
+                label: "Unit Location",
+                description: "The unit locational information",
+                elements: [
+                  {
+                    type: "field",
+                    fieldName: "address",
+                    label: "Unit Address",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "city",
+                    label: "Unit City",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "county",
+                    label: "Unit County",
+                  },
+                ],
+              }, // end of thrid group element
+              {
+                type: "group",
+                label: "Vacancy Status",
+                description: "Enter the MOS vacancy status",
+                elements: [
+                  {
+                    type: "field",
+                    fieldName: "status",
+                    label: "Vacancy Status",
+                  },
+                ],
+              }, // end of fourth/final group element
+            ],
+            expressionInfos: [
+              {
+                name: "alwaysHidden",
+                expression: "1 == 0",
+              },
+            ],
+          }, // end of form template elements
+        });
+
+        const map = new Map({
+          basemap: "streets-night-vector",
+          layers: [featureLayer],
+        });
+
+        let view = new MapView({
+          map: map,
+          container: "viewDiv",
+          center: [-79, 35],
+          zoom: 6,
+          popup: {
+            autoOpenEnabled: false,
+          },
+        });
+
+        // Add a new feature form with grouped fields
+        const form = new FeatureForm({
+          container: "form",
+          groupDisplay: "sequential", // only display one group at a time
+          layer: featureLayer,
+        });
+
+        view.on("click", function (event) {
+          // Unselect any currently selected features
+          unselectFeature();
+          // Listen for when the user clicks on the view
+          view.hitTest(event).then(function (response) {
+            // If user selects a feature, select it
+            const results = response.results;
+            if (
+              results.length > 0 &&
+              results[0].graphic &&
+              results[0].graphic.layer === featureLayer
+            ) {
+              selectFeature(
+                results[0].graphic.attributes[featureLayer.objectIdField]
+              );
+            } else {
+              // Hide the form and show the info div
+              document.getElementById("update").classList.add("esri-hidden");
+            }
+          });
+        });
+
+        // Function to unselect features
+        function unselectFeature() {
+          if (highlight) {
+            highlight.remove();
+          }
+        }
+
+        // Highlight the clicked feature and display
+        // its attributes in the featureform.
+        function selectFeature(objectId) {
+          // query feature from the server
+          featureLayer
+            .queryFeatures({
+              objectIds: [objectId],
+              outFields: ["*"],
+              returnGeometry: true,
+            })
+            .then(function (results) {
+              if (results.features.length > 0) {
+                editFeature = results.features[0];
+
+                // display the attributes of selected feature in the form
+                form.feature = editFeature;
+
+                // highlight the feature on the view
+                view
+                  .whenLayerView(editFeature.layer)
+                  .then(function (layerView) {
+                    highlight = layerView.highlight(editFeature);
+                  });
+
+                if (
+                  document
+                    .getElementById("update")
+                    .classList.contains("esri-hidden")
+                ) {
+                  document.getElementById("info").classList.add("esri-hidden");
+                  document
+                    .getElementById("update")
+                    .classList.remove("esri-hidden");
+                }
+              }
+            });
+        }
+
+        // Listen to the feature form's submit event.
+        form.on("submit", function () {
+          if (editFeature) {
+            // Grab updated attributes from the form.
+            const updated = form.getValues();
+
+            // Loop through updated attributes and assign
+            // the updated values to feature attributes.
+            Object.keys(updated).forEach(function (name) {
+              editFeature.attributes[name] = updated[name];
+            });
+
+            // Setup the applyEdits parameter with updates.
+            const edits = {
+              updateFeatures: [editFeature],
+            };
+            applyAttributeUpdates(edits);
+          }
+        });
+
+        // Call FeatureLayer.applyEdits() with specified params.
+        function applyAttributeUpdates(params) {
+          document.getElementById("btnUpdate").style.cursor = "progress";
+          featureLayer
+            .applyEdits(params)
+            .then(function (editsResult) {
+              // Get the objectId of the newly added feature.
+              // Call selectFeature function to highlight the new feature.
+              if (editsResult.addFeatureResults.length > 0) {
+                const objectId = editsResult.addFeatureResults[0].objectId;
+                selectFeature(objectId);
+              }
+              document.getElementById("btnUpdate").style.cursor = "pointer";
+            })
+            .catch(function (error) {
+              console.log("===============================================");
+              console.error(
+                "[ applyEdits ] FAILURE: ",
+                error.code,
+                error.name,
+                error.message
+              );
+              console.log("error = ", error);
+              document.getElementById("btnUpdate").style.cursor = "pointer";
+            });
+        }
+
+        document.getElementById("btnUpdate").onclick = function () {
+          // Fires feature form's submit event.
+          form.submit();
+        };
+
+        view.ui.add("update", "top-right");
+        view.ui.add("info", {
+          position: "top-left",
+          index: 1,
+        });
+      });
+    </script>
+  </head>
+
+  <body>
+    <div id="viewDiv"></div>
+    <div id="info" class="esri-widget">
+      <h3>Select a feature to begin editing</h3>
+    </div>
+
+    <div id="update" class="esri-widget esri-hidden">
+      <div id="form" class="scroller esri-component"></div>
+      <input
+        type="button"
+        class="esri-button"
+        value="Update assessment"
+        id="btnUpdate"
+      />
+    </div>
+  </body>
+</html>
