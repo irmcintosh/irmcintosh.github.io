@@ -33,17 +33,19 @@
     <script>
       require([
         "esri/Map",
+        "esri/widgets/FeatureForm",
         "esri/layers/FeatureLayer",
+        "esri/form/FormTemplate",
         "esri/widgets/Editor",
         "esri/views/MapView",
-        "esri/popup/content/AttachmentsContent",
         "esri/popup/content/TextContent",
       ], function (
         Map,
+        FeatureForm,
         FeatureLayer,
+        FormTemplate,
         Editor,
         MapView,
-        AttachmentsContent,
         TextContent
       ) {
         // Create the Map
@@ -210,6 +212,11 @@
           map: map,
           zoom: 6,
           center: [-79, 35],
+        });
+        var form = new FeatureForm({
+          constainer: "form",
+          groupDisplay: "sequential",
+          layer: featureLayer,
         });
 
         view.when(function () {
