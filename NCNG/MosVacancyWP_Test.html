@@ -69,11 +69,6 @@
                 description: "Military Occupational Specialty information",
                 elements: [
                   {
-                    type: "f__objectid",
-                    fieldName: 'f__objectid'
-                    label: 'OID
-                  },
-                  {
                     // Autocasts to new FieldElement
                     type: "field",
                     fieldName: "mos",
@@ -167,7 +162,7 @@
           zoom: 6,
           popup: {
             dockEnabled: true,
-          }
+          },
         });
 
         // Add a new feature form with grouped fields
@@ -177,7 +172,7 @@
           layer: featureLayer,
         });
 
-        view.on("click", function (event) {
+        view.popup.view.on("click", function (event) {
           // Unselect any currently selected features
           unselectFeature();
           // Listen for when the user clicks on the view
@@ -314,9 +309,9 @@
         purposes.
       </h4>
       <p>
-        Any changes/update to the feature are for testing purose only. If 
-        any issues are found within the web application, please email 
-        ian.r.mcintosh.mil@mail.mil.
+        For testing purposes, anyone is allowed to make changes/update to the
+        feature. If any issues are found within the web application, please
+        email ian.r.mcintosh.mil@mail.mil
       </p>
     </div>
 
