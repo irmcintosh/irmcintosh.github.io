@@ -66,36 +66,141 @@
         // Create a popupTemplate for the featurelayer and pass in a function to set its content and specify an action to handle editing the selected feature
         const template = {
           title: "MOS Vacancy: {mos}",
-          content: mosVacancyInfo,
+          content:
+            "<ul><li>Grade: <b>{grade}</b></li>" +
+            "<li>Unit: <b>{unit}</b></li>" +
+            "<li>Major Command: <b>{macom}</b></li>" +
+            "<li>City: <b>{city}</b></li><ul>",
+          fieldInfos: [
+            {
+              fieldName: "grade",
+            },
+            {
+              fieldName: "mos",
+            },
+            {
+              fieldName: "unit",
+            },
+            {
+              fieldName: "macom",
+            },
+            {
+              fieldName: "city",
+            },
+          ],
           actions: [editThisAction],
         };
-
-        // Function that creates two popup elements for the template: attachments and text
-        function mosVacancyInfo(feature) {
-          const textElement1 = new TextContent();
-          const textElement2 = new TextContent();
-          const textElement3 = new TextContent();
-          const textElement4 = new TextContent();
-
-          const maCom = feature.graphic.attributes.macom;
-          const unitCity = feature.graphic.attributes.city;
-          const mosGrade = feature.graphic.attributes.grade;
-          const mosUnit = feature.graphic.attributes.unit;
-
-          textElement4.text = "Grade: " + "<b>" + mosGrade + "</b>";
-          textElement1.text = "Unit: " + "<b>" + mosUnit + "</b>";
-          textElement2.text = "Major Command: " + "<b>" + maCom + "</b>";
-          textElement3.text = "City: " + "<b>" + unitCity + "</b>";
-
-          return [textElement4, textElement1, textElement2, textElement3];
-        }
 
         const featureLayer = new FeatureLayer({
           url:
             //"https://ncguardview.nc.gov/server/rest/services/Hosted/FL_NCNG_MOS_Vacancy_03MAR21/FeatureServer/0",
             "https://ncguardview.nc.gov/server/rest/services/Hosted/test/FeatureServer/0",
-          outFields: ["*"],
+          displayField: ["mos"],
+          outFields: ["mos", "unit", "grade", "city", "macom"],
           popupTemplate: template,
+          formTemplate: {
+            // Autocasts to new FormTemplate
+            title: "NCNG MOS Vacancy",
+            description: "Provide information for MOS",
+            elements: [
+              {
+                // Autocasts to new GroupElement
+                type: "group",
+                label: "MOS",
+                description: "Military Occupational Specialty information",
+                elements: [
+                  {
+                    // Autocasts to new FieldElement
+                    type: "field",
+                    fieldName: "mos",
+                    label: "MOS",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "series",
+                    label: "MOS Series",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "jobtitle",
+                    label: "Job Title",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "grade",
+                    label: "MOS Grade/Rank",
+                  },
+                ],
+              }, // end of first group element
+              {
+                type: "group",
+                label: "Unit information",
+                description: "The unit information",
+                elements: [
+                  {
+                    type: "field",
+                    fieldName: "uic",
+                    label: "Unit Identification Code",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "unit",
+                    label: "Unit",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "battalion",
+                    label: "Unit Battalion",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "macom",
+                    label: "Unit Major Command",
+                  },
+                ],
+              }, // end of second group element
+              {
+                type: "group",
+                label: "Unit Location",
+                description: "The unit locational information",
+                elements: [
+                  {
+                    type: "field",
+                    fieldName: "address",
+                    label: "Unit Address",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "city",
+                    label: "Unit City",
+                  },
+                  {
+                    type: "field",
+                    fieldName: "county",
+                    label: "Unit County",
+                  },
+                ],
+              }, // end of thrid group element
+              /* {
+                type: "group",
+                label: "Vacancy Status",
+                description: "Enter the MOS vacancy status",
+                elements: [
+                  {
+                    type: "field",
+                    fieldName: "status",
+                    label: "Vacancy Status",
+                  },
+                ],
+              }, */ // end of fourth/final group element
+            ],
+            expressionInfos: [
+              {
+                name: "alwaysHidden",
+                expression: "1 == 0",
+              },
+            ],
+          }, // end of form template elements
         });
         map.add(featureLayer);
 
@@ -141,6 +246,7 @@
                   {
                     name: "uic",
                     label: "Unit Identification Code",
+                    editable: false,
                   },
                   {
                     name: "unit",
