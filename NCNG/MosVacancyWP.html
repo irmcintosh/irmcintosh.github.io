@@ -6,7 +6,7 @@
       name="viewport"
       content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <title>NCNG | MOS Vacancy Editor | ArcGIS API for JavaScript 4.18</title>
+    <title>MOS Status</title>
 
     <link
       rel="stylesheet"
@@ -18,292 +18,275 @@
       html,
       body,
       #viewDiv {
+        padding: 0;
+        margin: 0;
         height: 100%;
         width: 100%;
-        margin: 0;
-        padding: 0;
       }
 
       #info {
         padding: 14px;
         border-radius: 5px;
-      }
-
-      #update {
-        padding: 6px;
-      }
-
-      #form {
-        background: #fff;
-      }
-
-      /* replaces esri-widget--panel */
-      .scroller {
-        overflow-x: hidden;
-        overflow-y: auto;
+        width: 25%;
       }
     </style>
-
     <script>
       require([
         "esri/Map",
-        "esri/views/MapView",
-        "esri/widgets/FeatureForm",
         "esri/layers/FeatureLayer",
-        "esri/form/FormTemplate",
-      ], function (Map, MapView, FeatureForm, FeatureLayer, FormTemplate) {
-        let highlight, editFeature;
+        "esri/widgets/Editor",
+        "esri/views/MapView",
+        "esri/popup/content/TextContent",
+      ], function (Map, FeatureLayer, Editor, MapView, TextContent) {
+        // Create the Map
+        const map = new Map({
+          basemap: "streets-night-vector",
+        });
+        let editor, features;
+        /*************************************************************
+         * The PopupTemplate content is the text that appears inside the
+         * popup. Bracketed {fieldName} can be used to reference the value
+         * of an attribute of the selected feature. HTML elements can be
+         * used to provide structure and styles within the content.
+         **************************************************************/
+        const editThisAction = {
+          title: "Edit feature",
+          id: "edit-this",
+          className: "esri-icon-edit",
+        };
+
+        // Create a popupTemplate for the featurelayer and pass in a function to set its content and specify an action to handle editing the selected feature
+        const template = {
+          title: "MOS Vacancy: {mos}",
+
+          content:
+            "<ul><li>Grade: <b>{grade}</b></li>" +
+            "<li>Unit: <b>{unit}</b></li>" +
+            "<li>Major Command: <b>{macom}</b></li>" +
+            "<li>City: <b>{city}</b></li><ul>",
+          fieldConfig: [
+            {
+              fieldName: "grade",
+            },
+            {
+              fieldName: "mos",
+            },
+            {
+              fieldName: "unit",
+            },
+            {
+              fieldName: "macom",
+            },
+            {
+              fieldName: "city",
+            },
+          ],
+          actions: [editThisAction],
+        };
+
         const featureLayer = new FeatureLayer({
           url:
             "https://ncguardview.nc.gov/server/rest/services/Hosted/FL_NCNG_MOS_Vacancy_03MAR21/FeatureServer/0",
+            //"https://ncguardview.nc.gov/server/rest/services/Hosted/test/FeatureServer/0",
+          displayField: ["mos"],
           outFields: ["*"],
+          popupTemplate: template,
           formTemplate: {
             // Autocasts to new FormTemplate
             title: "NCNG MOS Vacancy",
-            description: "Provide information for MOS",
-            elements: [
-              {
-                // Autocasts to new GroupElement
-                type: "group",
-                label: "MOS",
-                description: "Military Occupational Specialty information",
-                elements: [
-                  {
-                    // Autocasts to new FieldElement
-                    type: "field",
-                    fieldName: "mos",
-                    label: "MOS",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "mos_series",
-                    label: "MOS Series",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "jobtitle",
-                    label: "Job Title",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "vacancy_grade",
-                    label: "MOS Grade/Rank",
-                  },
-                ],
-              }, // end of first group element
-              {
-                type: "group",
-                label: "Unit information",
-                description: "The unit information",
-                elements: [
-                  {
-                    type: "field",
-                    fieldName: "uic",
-                    label: "Unit Identification Code",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "unit",
-                    label: "Unit",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "battalion",
-                    label: "Unit Battalion",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "macom",
-                    label: "Unit Major Command",
-                  },
-                ],
-              }, // end of second group element
-              {
-                type: "group",
-                label: "Unit Location",
-                description: "The unit locational information",
-                elements: [
-                  {
-                    type: "field",
-                    fieldName: "address",
-                    label: "Unit Address",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "city",
-                    label: "Unit City",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "county",
-                    label: "Unit County",
-                  },
-                ],
-              }, // end of thrid group element
-              {
-                type: "group",
-                label: "Vacancy Status",
-                description: "Enter the MOS vacancy status",
-                elements: [
-                  {
-                    type: "field",
-                    fieldName: "status",
-                    label: "Vacancy Status",
-                  },
-                ],
-              }, // end of fourth/final group element
-            ],
-            expressionInfos: [
-              {
-                name: "alwaysHidden",
-                expression: "1 == 0",
-              },
-            ],
+            description: "Provide information for MOS Vacancy",
           }, // end of form template elements
         });
+        map.add(featureLayer);
 
-        const map = new Map({
-          basemap: "streets-night-vector",
-          layers: [featureLayer],
-        });
-
-        let view = new MapView({
-          map: map,
+        // Create the MapView
+        const view = new MapView({
           container: "viewDiv",
-          center: [-79, 35],
+          map: map,
           zoom: 6,
-          popup: {
-            autoOpenEnabled: false,
-          },
+          center: [-79, 35],
         });
 
-        // Add a new feature form with grouped fields
-        const form = new FeatureForm({
-          container: "form",
-          groupDisplay: "sequential", // only display one group at a time
-          layer: featureLayer,
-        });
+        view.when(function () {
+          // Create the Editor with the specified layer and a list of field configurations
+          editor = new Editor({
+            view: view,
+            container: document.createElement("div"),
+            layerInfos: [
+              {
+                layer: featureLayer,
+                deleteEnabled: false,
+                addEnabled: false,
+                fieldConfig: [
+                  {
+                    Label: "MOS",
+                    description: "Military Occupation Specaility",
+                    fieldConfig: [
+                      // MOS information
+                      {
+                        name: "mos",
+                        label: "MOS",
+                        hing: "MOS three digit code (i.e 12Y)",
+                      },
+                      {
+                        name: "mos_series",
+                        label: "MOS Branch",
+                        hint:
+                          "The branch that the MOS belongs to (i.e Corps of Engineers)",
+                      },
+                      {
+                        name: "jobtitle",
+                        label: "Job Title",
+                        hint:
+                          "MOS job title or description (i.e SNR GEO ENG SGT)",
+                      },
+                      {
+                        name: "vacancy_grade",
+                        label: "Grade/Rank",
+                      },
+                    ],
+                  }, // End first group
+                  {
+                    Label: "Unit",
+                    description: "Unit Information",
+                    fieldConfig: [
+                      // Unit information
+                      {
+                        name: "uic",
+                        label: "Unit Identification Code",
+                        editable: false,
+                      },
+                      {
+                        name: "unit",
+                        label: "Unit",
+                      },
+                      {
+                        name: "battalion",
+                        label: "Unit Battalion",
+                      },
+                      {
+                        name: "macom",
+                        label: "Major Command",
+                        hint:
+                          "Select the Major Command that the MOS falls under",
+                      },
+                    ],
+                  }, // End of second group
 
-        view.on("click", function (event) {
-          // Unselect any currently selected features
-          unselectFeature();
-          // Listen for when the user clicks on the view
-          view.hitTest(event).then(function (response) {
-            // If user selects a feature, select it
-            const results = response.results;
-            if (
-              results.length > 0 &&
-              results[0].graphic &&
-              results[0].graphic.layer === featureLayer
-            ) {
-              selectFeature(
-                results[0].graphic.attributes[featureLayer.objectIdField]
+                  {
+                    Label: "Location",
+                    description: "Unit Location",
+                    initialState: "collapsed",
+                    fieldConfig: [
+                      // Locational
+                      {
+                        name: "address",
+                        label: "Unit Address",
+                      },
+                      {
+                        name: "city",
+                        label: "Unit City",
+                      },
+                      {
+                        name: "county",
+                        label: "Unit County",
+                      },
+                    ], // Thrid Group
+                  },
+                  {
+                      Label: "Vacancy",
+                      description: "Vacancy Status",
+                      initialState: "collapsed",
+                      fieldConfig: [
+                          {name: 'status',
+                          label: "Vacancy Status"}
+                      ]
+                  }
+                ],
+              },
+            ],
+          });
+
+          // Execute each time the "Edit feature" action is clicked
+          function editThis() {
+            // If the EditorViewModel's activeWorkflow is null, make the popup not visible
+            if (!editor.viewModel.activeWorkFlow) {
+              view.popup.visible = false;
+              // Call the Editor update feature edit workflow
+
+              editor.startUpdateWorkflowAtFeatureEdit(
+                view.popup.selectedFeature
               );
-            } else {
-              // Hide the form and show the info div
-              document.getElementById("update").classList.add("esri-hidden");
+              view.ui.add(editor, "top-right");
+              view.popup.spinnerEnabled = false;
+            }
+
+            // We need to set a timeout to ensure the editor widget is fully rendered. We
+            // then grab it from the DOM stack
+            setTimeout(function () {
+              // Use the editor's back button as a way to cancel out of editing
+              let arrComp = editor.domNode.getElementsByClassName(
+                "esri-editor__back-button esri-interactive"
+              );
+              if (arrComp.length === 1) {
+                // Add a tooltip for the back button
+                arrComp[0].setAttribute(
+                  "title",
+                  "Cancel edits, return to popup"
+                );
+                // Add a listerner to listen for when the editor's back button is clicked
+                arrComp[0].addEventListener("click", function (evt) {
+                  // Prevent the default behavior for the back button and instead remove the editor and reopen the popup
+                  evt.preventDefault();
+                  view.ui.remove(editor);
+                  view.popup.open({
+                    features: features,
+                  });
+                });
+              }
+            }, 150);
+          }
+
+          // Event handler that fires each time an action is clicked
+          view.popup.on("trigger-action", function (event) {
+            if (event.action.id === "edit-this") {
+              editThis();
             }
           });
         });
 
-        // Function to unselect features
-        function unselectFeature() {
-          if (highlight) {
-            highlight.remove();
-          }
-        }
-
-        // Highlight the clicked feature and display
-        // its attributes in the featureform.
-        function selectFeature(objectId) {
-          // query feature from the server
-          featureLayer
-            .queryFeatures({
-              objectIds: [objectId],
-              outFields: ["*"],
-              returnGeometry: true,
-            })
-            .then(function (results) {
-              if (results.features.length > 0) {
-                editFeature = results.features[0];
-
-                // display the attributes of selected feature in the form
-                form.feature = editFeature;
-
-                // highlight the feature on the view
-                view
-                  .whenLayerView(editFeature.layer)
-                  .then(function (layerView) {
-                    highlight = layerView.highlight(editFeature);
-                  });
-
-                if (
-                  document
-                    .getElementById("update")
-                    .classList.contains("esri-hidden")
-                ) {
-                  document.getElementById("info").classList.add("esri-hidden");
-                  document
-                    .getElementById("update")
-                    .classList.remove("esri-hidden");
-                }
-              }
-            });
-        }
-
-        // Listen to the feature form's submit event.
-        form.on("submit", function () {
-          if (editFeature) {
-            // Grab updated attributes from the form.
-            const updated = form.getValues();
-
-            // Loop through updated attributes and assign
-            // the updated values to feature attributes.
-            Object.keys(updated).forEach(function (name) {
-              editFeature.attributes[name] = updated[name];
-            });
-
-            // Setup the applyEdits parameter with updates.
-            const edits = {
-              updateFeatures: [editFeature],
-            };
-            applyAttributeUpdates(edits);
+        // Watch when the popup is visible
+        view.popup.watch("visible", function (event) {
+          // Check the Editor's viewModel state, if it is currently open and editing existing features, disable popups
+          if (editor.viewModel.state === "editing-existing-feature") {
+            view.popup.close();
+          } else {
+            // Grab the features of the popup
+            features = view.popup.features;
           }
         });
 
-        // Call FeatureLayer.applyEdits() with specified params.
-        function applyAttributeUpdates(params) {
-          document.getElementById("btnUpdate").style.cursor = "progress";
-          featureLayer
-            .applyEdits(params)
-            .then(function (editsResult) {
-              // Get the objectId of the newly added feature.
-              // Call selectFeature function to highlight the new feature.
-              if (editsResult.addFeatureResults.length > 0) {
-                const objectId = editsResult.addFeatureResults[0].objectId;
-                selectFeature(objectId);
-              }
-              document.getElementById("btnUpdate").style.cursor = "pointer";
-            })
-            .catch(function (error) {
-              console.log("===============================================");
-              console.error(
-                "[ applyEdits ] FAILURE: ",
-                error.code,
-                error.name,
-                error.message
-              );
-              console.log("error = ", error);
-              document.getElementById("btnUpdate").style.cursor = "pointer";
+        featureLayer.on("apply-edits", function () {
+          // Once edits are applied to the layer, remove the Editor from the UI
+          view.ui.remove(editor);
+
+          // Iterate through the features
+          features.forEach(function (feature) {
+            // Reset the template for the feature if it was edited
+            feature.popupTemplate = template;
+          });
+
+          // Open the popup again and reset its content after updates were made on the feature
+          if (features) {
+            view.popup.open({
+              features: features,
             });
-        }
+          }
 
-        document.getElementById("btnUpdate").onclick = function () {
-          // Fires feature form's submit event.
-          form.submit();
-        };
+          // Cancel the workflow so that once edits are applied, a new popup can be displayed
+          editor.viewModel.cancelWorkflow();
+        });
 
-        view.ui.add("update", "top-right");
         view.ui.add("info", {
           position: "top-left",
           index: 1,
@@ -315,17 +298,11 @@
   <body>
     <div id="viewDiv"></div>
     <div id="info" class="esri-widget">
-      <h3>Select a feature to begin editing</h3>
-    </div>
-
-    <div id="update" class="esri-widget esri-hidden">
-      <div id="form" class="scroller esri-component"></div>
-      <input
-        type="button"
-        class="esri-button"
-        value="Update assessment"
-        id="btnUpdate"
-      />
+      <h3>Select a feature to display its popup</h3>
+      <h4>
+        Edit the feature by clicking on the "Edit feature" action within the
+        popup.
+      </h4>
     </div>
   </body>
 </html>
