@@ -33,21 +33,11 @@
     <script>
       require([
         "esri/Map",
-        "esri/widgets/FeatureForm",
         "esri/layers/FeatureLayer",
-        "esri/form/FormTemplate",
         "esri/widgets/Editor",
         "esri/views/MapView",
         "esri/popup/content/TextContent",
-      ], function (
-        Map,
-        FeatureForm,
-        FeatureLayer,
-        FormTemplate,
-        Editor,
-        MapView,
-        TextContent
-      ) {
+      ], function (Map, FeatureLayer, Editor, MapView, TextContent) {
         // Create the Map
         const map = new Map({
           basemap: "streets-night-vector",
@@ -73,7 +63,7 @@
             "<li>Unit: <b>{unit}</b></li>" +
             "<li>Major Command: <b>{macom}</b></li>" +
             "<li>City: <b>{city}</b></li><ul>",
-          fieldInfos: [
+          fieldConfig: [
             {
               fieldName: "grade",
             },
@@ -104,104 +94,6 @@
             // Autocasts to new FormTemplate
             title: "NCNG MOS Vacancy",
             description: "Provide information for MOS Vacancy",
-            elements: [
-              {
-                // Autocasts to new GroupElement
-                type: "group",
-                label: "MOS",
-                description: "Military Occupational Specialty information",
-                elements: [
-                  {
-                    // Autocasts to new FieldElement
-                    type: "field",
-                    fieldName: "mos",
-                    label: "MOS",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "series",
-                    label: "MOS Series",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "jobtitle",
-                    label: "Job Title",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "grade",
-                    label: "MOS Grade/Rank",
-                  },
-                ],
-              }, // end of first group element
-              {
-                type: "group",
-                label: "Unit information",
-                description: "The unit information",
-                elements: [
-                  {
-                    type: "field",
-                    fieldName: "uic",
-                    label: "Unit Identification Code",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "unit",
-                    label: "Unit",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "battalion",
-                    label: "Unit Battalion",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "macom",
-                    label: "Unit Major Command",
-                  },
-                ],
-              }, // end of second group element
-              {
-                type: "group",
-                label: "Unit Location",
-                description: "The unit locational information",
-                elements: [
-                  {
-                    type: "field",
-                    fieldName: "address",
-                    label: "Unit Address",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "city",
-                    label: "Unit City",
-                  },
-                  {
-                    type: "field",
-                    fieldName: "county",
-                    label: "Unit County",
-                  },
-                ],
-              }, // end of thrid group element
-              /* {
-                type: "group",
-                label: "Vacancy Status",
-                description: "Enter the MOS vacancy status",
-                elements: [
-                  {
-                    type: "field",
-                    fieldName: "status",
-                    label: "Vacancy Status",
-                  },
-                ],
-              }, */ // end of fourth/final group element
-            ],
-            expressionInfos: [
-              {
-                name: "alwaysHidden",
-                expression: "1 == 0",
-              },
-            ],
           }, // end of form template elements
         });
         map.add(featureLayer);
@@ -213,11 +105,6 @@
           zoom: 6,
           center: [-79, 35],
         });
-        var form = new FeatureForm({
-          constainer: "form",
-          groupDisplay: "sequential",
-          layer: featureLayer,
-        });
 
         view.when(function () {
           // Create the Editor with the specified layer and a list of field configurations
@@ -227,63 +114,84 @@
             layerInfos: [
               {
                 layer: featureLayer,
+                deleteEnabled: false,
+                addEnabled: true,
                 fieldConfig: [
-                  // MOS information
                   {
-                    name: "mos",
-                    label: "Military Occupational Specialty",
-                    hing: "MOS three digit code (i.e 12Y)",
-                  },
+                    Label: "MOS",
+                    description: "Military Occupation Specaility",
+                    fieldConfig: [
+                      // MOS information
+                      {
+                        name: "mos",
+                        label: "MOS",
+                        hing: "MOS three digit code (i.e 12Y)",
+                      },
+                      {
+                        name: "series",
+                        label: "MOS Branch",
+                        hint:
+                          "The branch that the MOS belongs to (i.e Corps of Engineers)",
+                      },
+                      {
+                        name: "jobtitle",
+                        label: "Job Title",
+                        hint:
+                          "MOS job title or description (i.e SNR GEO ENG SGT)",
+                      },
+                      {
+                        name: "grade",
+                        label: "Grade/Rank",
+                      },
+                    ],
+                  }, // End first group
                   {
-                    name: "series",
-                    label: "MOS Branch",
-                    hint:
-                      "The branch that the MOS belongs to (i.e Corps of Engineers)",
-                  },
+                    Label: "Unit",
+                    description: "Unit Information",
+                    fieldConfig: [
+                      // Unit information
+                      {
+                        name: "uic",
+                        label: "Unit Identification Code",
+                        editable: false,
+                      },
+                      {
+                        name: "unit",
+                        label: "Unit",
+                      },
+                      {
+                        name: "battalion",
+                        label: "Unit Battalion",
+                      },
+                      {
+                        name: "macom",
+                        label: "Major Command",
+                        hint:
+                          "Select the Major Command that the MOS falls under",
+                      },
+                    ],
+                  }, // End of second group
+
                   {
-                    name: "jobtitle",
-                    label: "Job Title",
-                    hint: "MOS job title or description (i.e SNR GEO ENG SGT)",
-                  },
-                  {
-                    name: "grade",
-                    label: "Grade/Rank",
-                  },
-                  // Unit information
-                  {
-                    name: "uic",
-                    label: "Unit Identification Code",
-                    editable: false,
-                  },
-                  {
-                    name: "unit",
-                    label: "Unit",
-                  },
-                  {
-                    name: "battalion",
-                    label: "Unit Battalion",
-                  },
-                  {
-                    name: "macom",
-                    label: "Major Command",
-                    hint: "Select the Major Command that the MOS falls under",
-                  },
-                  // Locational
-                  {
-                    name: "address",
-                    label: "Unit Address",
-                  },
-                  {
-                    name: "city",
-                    label: "Unit City",
-                  },
-                  {
-                    name: "county",
-                    label: "Unit County",
+                    Label: "Location",
+                    description: "Unit Location",
+                    fieldConfig: [
+                      // Locational
+                      {
+                        name: "address",
+                        label: "Unit Address",
+                      },
+                      {
+                        name: "city",
+                        label: "Unit City",
+                      },
+                      {
+                        name: "county",
+                        label: "Unit County",
+                      },
+                    ], // Thrid Group
                   },
                 ],
-                deleteEnabled: false,
-                addEnabled: false,
               },
             ],
           });
@@ -378,6 +286,7 @@
 
   <body>
     <div id="viewDiv"></div>
+    <div id="form"></div>
     <div id="info" class="esri-widget">
       <h3>Select a feature to display its popup</h3>
       <h4>
