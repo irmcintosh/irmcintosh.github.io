@@ -87,7 +87,7 @@
         const featureLayer = new FeatureLayer({
           url:
             "https://ncguardview.nc.gov/server/rest/services/Hosted/FL_NCNG_MOS_Vacancy_03MAR21/FeatureServer/0",
-            //"https://ncguardview.nc.gov/server/rest/services/Hosted/test/FeatureServer/0",
+          //"https://ncguardview.nc.gov/server/rest/services/Hosted/test/FeatureServer/0",
           displayField: ["mos"],
           outFields: ["*"],
           popupTemplate: template,
@@ -194,14 +194,11 @@
                     ], // Thrid Group
                   },
                   {
-                      Label: "Vacancy",
-                      description: "Vacancy Status",
-                      initialState: "collapsed",
-                      fieldConfig: [
-                          {name: 'status',
-                          label: "Status"}
-                      ]
-                  }
+                    Label: "Vacancy",
+                    description: "Vacancy Status",
+                    initialState: "collapsed",
+                    fieldConfig: [{ name: "status", label: "Status" }],
+                  },
                 ],
               },
             ],
