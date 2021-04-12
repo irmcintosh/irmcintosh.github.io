@@ -251,7 +251,7 @@
           function editThis() {
             // If the EditorViewModel's activeWorkflow is null, make the popup not visible
             if (!editor.viewModel.activeWorkFlow) {
-              view.popup.visible = false;
+              view.popup.visible =false;
 
               editor.startUpdateWorkflowAtFeatureEdit(
                 view.popup.selectedFeature
@@ -279,7 +279,7 @@
                   console.log(evt);
                   // Prevent the default behavior for the back button and instead remove the editor and reopen the popup
                   evt.preventDefault();
-                  view.ui.remove(editor);
+                  //view.ui.remove(editor);
                   view.popup.open({
                     features: features,
                   });
