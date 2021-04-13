@@ -7,8 +7,7 @@
       content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
     <title>
-      Edit features with the Editor widget | Sample | ArcGIS API for JavaScript
-      4.18
+      MOS Status - Test
     </title>
 
     <link
@@ -20,19 +19,43 @@
     <style>
       html,
       body,
-      #viewDiv {
+      
+    #viewDiv {
         padding: 0;
         margin: 0;
         height: 100%;
         width: 100%;
       }
-      
-      #major-command-filter{
+
+    #grade-filter{
       height: 315px;
       width: 150%;
       visibility: hidden;
       }
-      .majorCommand-item {
+
+    .grade-item {
+      width: 100%;
+      padding: 12px;
+      text-align: center;
+      vertical-align: baseline;
+      cursor: pointer;
+      height: 40px;
+      }
+
+    .grade-item:focus {
+      background-color: dimgrey;
+    }
+
+    .grade-item:hover {
+      background-color: dimgrey;
+    }
+      
+    #major-command-filter{
+      height: 315px;
+      width: 150%;
+      visibility: hidden;
+      }
+    .majorCommand-item {
       width: 100%;
       padding: 12px;
       text-align: center;
@@ -52,6 +75,12 @@
 
       .esri-editor .esri-item-list__scroller {
         max-height: 350px;
+      }
+
+      #info {
+        padding: 14px;
+        border-radius: 5px;
+        width: 25%;
       }
     </style>
 
@@ -79,7 +108,7 @@
           className: "esri-icon-edit",
         };
 
-        let editor, features, majorCommandView;
+        let editor, features, majorCommandView, gradeView;
         // Create a popTemplate
         const template = {
           title: "MOS Vacancy: {mos}",
@@ -189,8 +218,47 @@
           zoom: 6,
           center: [-79, 35],
         });
+        ///////////////////////////////////////////////////////////////////
+        /*                    Grade Filter                  */
+        /*
+        // Doesn't really filter out Grade. The filter still inlcudes 
+        // whatever grades are at that location
+        const gradeNode = document.querySelectorAll(`.grade-item`);
+        const gradeElement = document.getElementById("grade-filter");
 
-        
+        gradeElement.addEventListener('click', filterByGrade); // handle user choice
+
+        // Handle selection for user filter
+        function filterByGrade(event) {
+          const selectedGrade = event.target.getAttribute("data-grade");
+          gradeView.filter = {
+            where: "grade = '"+ selectedGrade +"'",
+          };
+        };
+
+        view.whenLayerView(featureLayer).then(function (layerView) {
+          gradeView = layerView;
+
+          // set up UI items
+          gradeElement.style.visibility = 'visible';
+          const gradeExpand = new Expand({
+            view: view,
+            content: gradeElement,
+            expandIconClass: "esri-icon-filter",
+            group: "top-left",
+          });
+          
+          // clear filters
+          gradeExpand.watch("expanded", function(){
+            if(!gradeExpand.expanded) {
+              gradeView.filter = null;
+            };
+          });
+
+          view.ui.add(gradeExpand, 'top-left');
+        });
+        */
+        ///////////////////////////////////////////////////////////////////
         const majComNode = document.querySelectorAll(`.majorCommand-item`);
         const majComElement = document.getElementById("major-command-filter");
 
@@ -224,11 +292,9 @@
             }
           });
           view.ui.add(majCommandExpand, 'top-left')
-          view.ui.add("info", {
-          position: "top-right",
-          index: 1,
-        });
-   
+          //////////////////////////////////////////
+        /* Stop with Filter and Begin with Editor */
+   /////////////////////////////////////////////////////
         view.when(function () {
           view.popup.autoOpenEnabled = true; //disable popups
 
@@ -326,6 +392,10 @@
           });
         });
         });
+        view.ui.add("info", {
+          position: "bottom-left",
+          index: 1,
+        });
       });
     </script>
   </head>
@@ -333,15 +403,25 @@
   <body>
     <div id="viewDiv"></div>
     <div id="major-command-filter" class="esri-widget">
-      <div class="majorCommand-item visible-season" data-command="30 ABCT">30 ABCT</div>
-      <div class="majorCommand-item visible-season" data-command="130 MEB">130 MEB</div>
-      <div class="majorCommand-item visible-season" data-command="113 SB">113 SB</div>
-      <div class="majorCommand-item visible-season" data-command="60 TC">60 TC</div>
-      <div class="majorCommand-item visible-season" data-command="449 TAB">449 TAB</div>
-      <div class="majorCommand-item visible-season" data-command="139 REG">139 REG</div>
-      <div class="majorCommand-item visible-season" data-command="JFHQ">JFHQ</div>
-      <div class="majorCommand-item visible-season" data-command="TEST">TEST</div>
-      </dvi>
+      <div class="majorCommand-item visible-command" data-command="30 ABCT">30 ABCT</div>
+      <div class="majorCommand-item visible-command" data-command="130 MEB">130 MEB</div>
+      <div class="majorCommand-item visible-command" data-command="113 SB">113 SB</div>
+      <div class="majorCommand-item visible-command" data-command="60 TC">60 TC</div>
+      <div class="majorCommand-item visible-command" data-command="449 TAB">449 TAB</div>
+      <div class="majorCommand-item visible-command" data-command="139 REG">139 REG</div>
+      <div class="majorCommand-item visible-command" data-command="JFHQ">JFHQ</div>
+      <div class="majorCommand-item visible-command" data-command="TEST">TEST</div>
+    </dvi>
+    <div id="grade-filter" class="esri-widget">
+        <div class="grade-item visible-grade" data-grade="E1">E1</div>
+        <div class="grade-item visible-grade" data-grade="E2">E2</div>
+        <div class="grade-item visible-grade" data-grade="E3">E3</div>
+        <div class="grade-item visible-grade" data-grade="E4">E4</div>
+        <div class="grade-item visible-grade" data-grade="E5">E5</div>
+        <div class="grade-item visible-grade" data-grade="E6">E6</div>
+        <div class="grade-item visible-grade" data-grade="E7">E7</div>
+        <div class="grade-item visible-grade" data-grade="E8">E8</div>
+    </dvi>
     <div id="info" class="esri-widget">
       <h3>Select a feature to display its popup</h3>
       <h4>
