@@ -315,7 +315,7 @@
             ],
           });
           // Add widget to top-right of the view
-          view.ui.add(editor, "bottom-right");
+          //view.ui.add(editor, "bottom-right");
 
           // Execute each time the "Edit Feature" action is called
           function editThis() {
@@ -327,7 +327,7 @@
                 view.popup.selectedFeature
               );
 
-              //view.ui.add(editor, "bottom-right");
+              view.ui.add(editor, "bottom-right");
               view.popup.spinnerEnabled = true;
             }
 
