@@ -234,9 +234,7 @@
         // whatever grades are at that location
         const gradeNode = document.querySelectorAll(`.grade-item`);
         const gradeElement = document.getElementById("grade-filter");
-
         gradeElement.addEventListener('click', filterByGrade); // handle user choice
-
         // Handle selection for user filter
         function filterByGrade(event) {
           const selectedGrade = event.target.getAttribute("data-grade");
@@ -244,10 +242,8 @@
             where: "grade = '"+ selectedGrade +"'",
           };
         };
-
         view.whenLayerView(featureLayer).then(function (layerView) {
           gradeView = layerView;
-
           // set up UI items
           gradeElement.style.visibility = 'visible';
           const gradeExpand = new Expand({
@@ -263,7 +259,6 @@
               gradeView.filter = null;
             };
           });
-
           view.ui.add(gradeExpand, 'top-left');
         });
         */
