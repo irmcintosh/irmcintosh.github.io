@@ -7,7 +7,7 @@
       content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
     <title>
-      MOS Status - Test
+      MOS Status
     </title>
 
     <link
@@ -113,7 +113,7 @@
         const template = {
           title: "MOS Vacancy: {mos}",
           content:
-            "<ul><li>Grade: <b>{vacancy_grade}</b></li>" +
+            "<ul><li>Grade: <b>{grade}</b></li>" +
             "<li>Unit: <b>{unit}</b></li>" +
             "<li>Major Command: <b>{macom}</b></li>" +
             "<li>City: <b>{city}</b></li><ul>",
@@ -202,6 +202,22 @@
                   },
                 ],
               }, // End of Second Group,
+              {
+                type: "group",
+                label: "MOS Status",
+                elements: [
+                  {
+                    type: 'field',
+                    fieldName: "status",
+                    label: "Vacancy Status",
+                  },
+                  {
+                    type: "field",
+                    fieldName: 'vacancy_date',
+                    label: "Current As of"
+                  }
+                ]
+              }
             ],
           },
         });
@@ -461,7 +477,7 @@
       <h3>Select a feature to display its popup</h3>
       <h4>
         Edit the feature by clicking on the "Edit feature" action within the
-        popup.
+        popup. Click the 'X' to close the popup.
       </h4>
     </div>
   </body>
