@@ -1,11 +1,95 @@
-<link rel="stylesheet" href="./style.min.css">
+<!DOCTYPE html>
+<html lang="en" style="background-color: rgb(0, 38, 255);">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="https://getbizviz.s3.amazonaws.com/icon.png">
+  <!---->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="robots" content="noindex, nofollow">
+  <!---->
+  <title>
+    Ian McIntosh's Digital Business Card
+  </title>
+  <!---->
+  <meta name="author" content="SMART vCARD - Another Software Solution By BizViz">
+  <meta name="url" content="https://smartvcard.com">
+  <meta name="designer" content="Jeff Baer">
+  <!---->
+  <!---->
+  <meta property="og:title" content=" Ian McIntosh's Digital Business Card">
+  <meta property="twitter:title" content=" Ian McIntosh's Digital Business Card">
+  <!---->
+  <!---->
+  <script>
+    "http" == window.location.href.substr(0, 4) && "/" != window.location.href.slice(-1) && window.location.replace(window.location.href + "/");
+  </script>
+  <!---->
+  <style>
+    #body {
+      font-family: sans-serif;
+    }
+
+    input[type='range']::-moz-range-track {
+      background: none;
+    }
+
+    input[type='range']::-moz-range-thumb {
+      -moz-appearance: none;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 100%;
+      border: none;
+      background: #374151;
+      z-index: 3;
+      cursor: pointer;
+    }
+
+    input[type='range']::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 100%;
+      border: none;
+      background: #374151;
+      z-index: 3;
+      cursor: pointer;
+    }
+
+    .closeBtnColor {
+      filter: invert(1)
+    }
+
+    .topAction {
+      false
+    }
+
+    .action {
+      color: #fff;
+    }
+
+    .card {
+      color: #000 !important
+    }
+
+    .ziacard {
+      color: #000 !important;
+      padding-top: 20px;
+    }
+
+    .text {
+      text-align: center;
+      line-height: 1.5;
+      color: #000 !important
+    }
+  </style>
+  <!---->
+  <link rel="stylesheet" href="./style.min.css">
 </head>
 
 <body id="body">
   <div id="modal" style="background-color: rgb(249, 250, 251); visibility: hidden; top: 2rem; opacity: 0;">
-    <div class="loading-animation">
-      <div class="spinner"></div>
-    </div>
     <div id="closeModal"><a id="close" class="closeBtnColor">
         <div class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 6L6 18M6 6l12 12"></path>
@@ -58,7 +142,7 @@
         </a></div>
       <!---->
     </div>
-    <div class="headerImgC"><img id="cover" src="./cover.png" alt="Background Pattern">
+    <div class="headerImgC"><img id="cover" src="./cover.jpeg" alt="Background Pattern">
       <!---->
     </div>
   </header>
@@ -133,7 +217,7 @@
               </svg></div>
           </a>
           <p class="text">
-            Transportation Website
+            Website
           </p>
         </div>
       </div>
@@ -166,8 +250,9 @@
     </div>
   </main>
   <footer class="text" style="background-color: rgb(249, 250, 251);">
-
-    <a href="https://www.esri.com/en-us/home" target="_blank" rel="noopener noreferrer" class="text">Esri</a>
+    Created with
+    <a href="
+            https://smartvcard.com" target="_blank" rel="noopener noreferrer" class="text">SMART vCARD</a>
   </footer>
   <script src="./qrcode.min.js"></script>
   <script>
