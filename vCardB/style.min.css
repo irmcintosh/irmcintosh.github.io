@@ -475,7 +475,7 @@ header {
   grid-template-rows: auto;
   height: 100%;
   overflow: hidden;
-  max-width: auto; 
+  
 }
 #cover {
   position: relative;
