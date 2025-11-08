@@ -271,7 +271,7 @@
         async function speakCatchphrase(text, onAudioEnded) {
             // Lock the game while generating and playing sound
             gameLocked = true;
-            displayMessage(`...Generating sound for: "${text}"`, 99999); 
+            displayMessage(`"${text}"`, 99999); 
             
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${TTS_API_MODEL}:generateContent?key=${API_KEY}`;
             const payload = {
