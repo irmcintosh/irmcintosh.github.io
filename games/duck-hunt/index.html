@@ -2,12 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <!-- Mandatory for mobile responsiveness -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Duck Hunt Pro</title>
+    <title>Duck Hunt Pro (Silent)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /*
+        Cross-Platform Base Styles
+        */
         body {
-            font-family: 'Press Start 2P', cursive; /* Retro font for theme */
+            font-family: 'Press Start 2P', cursive;
             background-color: #2c3e50;
             display: flex;
             justify-content: center;
@@ -16,132 +20,109 @@
             margin: 0;
             overflow: hidden;
             cursor: none; /* Hide default cursor */
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
         #gameContainer {
-            width: 90vw;
-            max-width: 800px;
-            aspect-ratio: 4/3; /* Classic TV aspect ratio */
-            background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 70%, #6B8E23 70%, #6B8E23 100%); /* Sky & Grass */
+            width: 95vw; /* Fluid width */
+            max-width: 800px; /* Desktop max size */
+            aspect-ratio: 4/3;
+            background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 70%, #6B8E23 70%, #6B8E23 100%);
             border: 8px solid #333;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
             position: relative;
             overflow: hidden;
             border-radius: 5px;
-            cursor: none; /* Ensure cursor is hidden within game area */
+            cursor: none;
+            /* Allow touch for targeting and shooting */
+            touch-action: manipulation;
         }
 
-        #gameCanvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1; /* Below UI elements but above background */
-        }
-
-        #crosshair {
-            position: absolute;
-            width: 30px; /* Size of crosshair */
-            height: 30px;
-            border: 2px solid white;
-            border-radius: 50%;
-            box-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
-            transform: translate(-50%, -50%); /* Center the crosshair on the cursor */
-            pointer-events: none; /* Ensure it doesn't block clicks */
-            z-index: 100;
-            background-color: rgba(255, 255, 255, 0.2);
+        /* Responsive UI elements */
+        #scoreBoard, #shotsDisplay {
+            font-size: 0.8rem;
+            padding: 5px 10px;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
         }
 
         .duck {
-            position: absolute;
-            width: 60px; /* Duck size */
-            height: 40px;
-            background-color: #FFA500; /* Orange body for now */
+            width: 70px;
+            height: 50px;
+            background-color: #FFA500;
             border-radius: 50% 50% 0 0;
-            transform-origin: bottom center;
             transition: transform 0.1s ease-out;
-            pointer-events: auto; /* Ducks can be clicked */
-            cursor: none; /* Ducks don't show default cursor */
+            pointer-events: auto;
+            cursor: none;
             z-index: 10;
+            position: absolute;
+            /* Simple duck shape using CSS pseudo-elements */
+            border: 2px solid #000;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
         }
-
-        .duck::before { /* Head */
+        
+        .duck::before, .duck::after {
             content: '';
             position: absolute;
-            width: 20px;
-            height: 20px;
-            background-color: #228B22; /* Green head */
-            border-radius: 50%;
-            top: -10px;
+        }
+
+        .duck::before { /* Head (Green) */
+            width: 25px;
+            height: 25px;
+            top: -12px;
             left: 5px;
+            background-color: #008000;
+            border-radius: 50%;
+            border: 2px solid #000;
         }
 
-        .duck::after { /* Beak */
-            content: '';
-            position: absolute;
-            width: 10px;
-            height: 5px;
-            background-color: yellow;
-            border-radius: 0 50% 50% 0;
-            top: -2px;
-            left: 20px;
+        .duck::after { /* Beak (Red) */
+            width: 12px;
+            height: 6px;
+            top: 5px;
+            left: 25px;
+            background-color: #FF4500;
+            border-radius: 0 5px 5px 0;
         }
 
+        /* Visual feedback when shot */
         .duck.shot {
-            background-color: gray;
-            transform: rotate(90deg) scaleY(0.5); /* Spin and shrink */
-            opacity: 0.7;
-            animation: fall 1s forwards; /* Make it fall */
+            background-color: #999;
+            opacity: 0.5;
+            animation: fall 1s forwards;
         }
 
         @keyframes fall {
             to {
-                transform: translateY(100vh) rotate(90deg) scaleY(0.5);
-                opacity: 0;
+                transform: translateY(100vh) rotate(5deg);
+                opacity: 0.1;
             }
         }
 
-        .splash {
+        /* CROSSHAIR LOGIC: Visible only on Desktop/Mouse devices */
+        #crosshair {
             position: absolute;
-            width: 20px;
-            height: 20px;
-            background-color: rgba(255, 0, 0, 0.7);
+            width: 40px;
+            height: 40px;
+            border: 3px solid white;
             border-radius: 50%;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 1);
             transform: translate(-50%, -50%);
-            z-index: 99;
-            animation: fadeOut 0.3s forwards;
+            pointer-events: none;
+            z-index: 100;
+            background-color: rgba(255, 255, 255, 0.3);
+            /* Initially hidden, only displayed if a mouse is detected (desktop) */
+            display: none;
         }
 
-        @keyframes fadeOut {
-            from { opacity: 1; transform: scale(1); }
-            to { opacity: 0; transform: scale(1.5); }
-        }
-
-        #scoreBoard {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background-color: rgba(0, 0, 0, 0.6);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 5px;
-            font-size: 0.9rem;
-            z-index: 50;
-        }
-
-        #shotsDisplay {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: rgba(0, 0, 0, 0.6);
-            color: white;
-            padding: 8px 15px;
-            border-radius: 5px;
-            font-size: 0.9rem;
-            z-index: 50;
+        /* Media query to detect desktop/mouse environment */
+        @media (hover: hover) and (pointer: fine) {
+            #crosshair {
+                display: block;
+            }
         }
 
         #messageBox {
@@ -149,26 +130,27 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(0, 0, 0, 0.9);
             color: white;
-            padding: 30px 40px;
+            padding: 30px;
             border-radius: 10px;
             text-align: center;
             z-index: 1000;
-            font-size: 1.2rem;
-            border: 4px solid #f9d71c; /* Gold border */
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            width: 80%;
+            max-width: 450px;
+            border: 5px solid #f9d71c;
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.8);
         }
 
         #messageBox h2 {
-            font-size: 2.5rem;
-            margin-bottom: 15px;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
             color: #f9d71c;
         }
 
         #messageBox p {
+            font-size: 0.9rem;
             margin-bottom: 25px;
-            line-height: 1.5;
         }
 
         #startButton {
@@ -176,15 +158,21 @@
             color: #333;
             padding: 12px 25px;
             border: none;
-            border-radius: 5px;
-            font-size: 1.2rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
             cursor: pointer;
-            transition: background-color 0.2s ease;
+            transition: background-color 0.2s ease, transform 0.1s;
             font-family: 'Press Start 2P', cursive;
+            box-shadow: 0 4px #e5c100;
         }
 
         #startButton:hover {
             background-color: #e5c100;
+        }
+        
+        #startButton:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 #e5c100;
         }
     </style>
 </head>
@@ -192,12 +180,12 @@
 
 <div id="gameContainer">
     <div id="crosshair"></div>
-    <div id="scoreBoard">SCORE: 0</div>
-    <div id="shotsDisplay">SHOTS: 3</div>
+    <div id="scoreBoard" class="absolute top-0 left-0">SCORE: 0</div>
+    <div id="shotsDisplay" class="absolute top-0 right-0">SHOTS: 3</div>
 
     <div id="messageBox">
         <h2 id="messageTitle">Duck Hunt Pro</h2>
-        <p id="messageText">Shoot the ducks before they escape! You have 3 shots per round.</p>
+        <p id="messageText">Shoot the ducks before they escape! You need to hit 60% of the ducks to progress to the next round. Good luck!</p>
         <button id="startButton">START GAME</button>
     </div>
 </div>
@@ -215,191 +203,20 @@
     let score = 0;
     let shotsRemaining = 3;
     let ducksOnScreen = [];
-    let gameInterval; // For duck movement
-    let spawnInterval; // For duck spawning
-    let gameState = 'START'; // START, PLAYING, GAME_OVER
-    let lastTime = 0; // For delta time calculation
+    let spawnInterval;
+    let gameState = 'START';
+    let lastTime = 0;
     let ducksToSpawnThisRound = 5;
+    let totalDucksInRound = 0; // NEW: Tracks the total to be spawned for accurate end-of-round check
     let ducksShotThisRound = 0;
-    let currentRound = 1;
+    let currentRound = 0;
 
-    const DUCK_SPEED_BASE = 50; // pixels per second
+    const DUCK_SPEED_BASE = 50;
     const DUCK_MAX_SPEED = 200;
-    const DUCK_SIZE = 60; // width
-    const DUCK_HEIGHT = 40; // height
+    const DUCK_SIZE = 70;
+    const DUCK_HEIGHT = 50;
 
-    // --- Utility Functions ---
-
-    // Handles the conversion of base64 audio data into a playable WAV blob
-    function base64ToArrayBuffer(base64) {
-        const binaryString = window.atob(base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        return bytes.buffer;
-    }
-
-    // Creates a WAV file header
-    function pcmToWav(pcm16Data, sampleRate) {
-        const numChannels = 1;
-        const bitDepth = 16;
-        const bytesPerSample = bitDepth / 8;
-        const blockAlign = numChannels * bytesPerSample;
-        const byteRate = sampleRate * blockAlign;
-        const numBytes = pcm16Data.byteLength;
-        const totalSize = numBytes + 36; // 36 is the header size without data chunk
-
-        const buffer = new ArrayBuffer(44 + numBytes);
-        const view = new DataView(buffer);
-        let offset = 0;
-
-        function writeString(str) {
-            for (let i = 0; i < str.length; i++) {
-                view.setUint8(offset + i, str.charCodeAt(i));
-            }
-            offset += str.length;
-        }
-
-        // RIFF chunk
-        writeString('RIFF');
-        view.setUint32(offset, totalSize, true); offset += 4;
-        writeString('WAVE');
-
-        // FMT chunk
-        writeString('fmt ');
-        view.setUint32(offset, 16, true); offset += 4; // Sub-chunk size (16 for PCM)
-        view.setUint16(offset, 1, true); offset += 2; // Audio format (1 for PCM)
-        view.setUint16(offset, numChannels, true); offset += 2;
-        view.setUint32(offset, sampleRate, true); offset += 4;
-        view.setUint32(offset, byteRate, true); offset += 4;
-        view.setUint16(offset, blockAlign, true); offset += 2;
-        view.setUint16(offset, bitDepth, true); offset += 2;
-
-        // DATA chunk
-        writeString('data');
-        view.setUint32(offset, numBytes, true); offset += 4;
-
-        // Write PCM data
-        const pcmView = new Int16Array(buffer, offset);
-        pcmView.set(pcm16Data);
-
-        return new Blob([buffer], { type: 'audio/wav' });
-    }
-
-    // A simple retry utility with exponential backoff for the API call
-    async function fetchWithRetry(url, options, maxRetries = 3) {
-        for (let i = 0; i < maxRetries; i++) {
-            try {
-                const response = await fetch(url, options);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return response.json();
-            } catch (error) {
-                console.warn(`Fetch attempt ${i + 1} failed: ${error.message}. Retrying...`);
-                if (i < maxRetries - 1) {
-                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                } else {
-                    throw error;
-                }
-            }
-        }
-    }
-
-    let audioContext = null;
-    let shotSound = null;
-    let hitSound = null;
-    let missSound = null;
-    let gameOverSound = null;
-    let roundCompleteSound = null;
-
-    async function generateAndCacheSound(prompt) {
-        if (!audioContext) {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        const payload = {
-            contents: [{
-                parts: [{ text: prompt }]
-            }],
-            generationConfig: {
-                responseModalities: ["AUDIO"],
-                speechConfig: {
-                    voiceConfig: {
-                        prebuiltVoiceConfig: { voiceName: "Fenrir" }
-                    }
-                }
-            },
-            model: "gemini-2.5-flash-preview-tts"
-        };
-        const apiKey = ""; // API key needs to be set up to use this functionality
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-
-        try {
-            const result = await fetchWithRetry(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const part = result?.candidates?.[0]?.content?.parts?.[0];
-            const audioData = part?.inlineData?.data;
-            const mimeType = part?.inlineData?.mimeType;
-
-            if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000; // Default if not found
-
-                const pcmData = base64ToArrayBuffer(audioData);
-                const pcm16 = new Int16Array(pcmData);
-                const wavBlob = pcmToWav(pcm16, sampleRate);
-                const audioUrl = URL.createObjectURL(wavBlob);
-
-                const audio = new Audio(audioUrl);
-                // Preload the sound
-                await new Promise(resolve => {
-                    audio.oncanplaythrough = resolve;
-                    audio.load();
-                });
-                return audio;
-
-            } else {
-                console.error("Failed to generate or retrieve audio data.");
-                return null;
-            }
-        } catch (e) {
-            console.error("API call failed for sound generation:", e);
-            return null;
-        }
-    }
-
-    async function loadSounds() {
-        console.log("Loading sounds...");
-        shotSound = await generateAndCacheSound("a quick, sharp gun shot sound");
-        hitSound = await generateAndCacheSound("a short, satisfying 'thwack' sound");
-        missSound = await generateAndCacheSound("a quick, airy 'whoosh' sound");
-        gameOverSound = await generateAndCacheSound("a classic 'game over' tune, slightly melancholic");
-        roundCompleteSound = await generateAndCacheSound("a short, triumphant fanfare");
-        console.log("Sounds loaded (or attempted to load).");
-    }
-
-    function playSound(sound) {
-        if (sound && audioContext && audioContext.state === 'running') {
-            sound.currentTime = 0; // Rewind to start
-            sound.play().catch(e => console.error("Audio play failed:", e));
-        } else if (sound) {
-            // If audio context is suspended, try to resume on first interaction
-            if (audioContext && audioContext.state === 'suspended') {
-                audioContext.resume().then(() => {
-                    sound.currentTime = 0;
-                    sound.play().catch(e => console.error("Audio play failed after resume:", e));
-                });
-            } else {
-                console.warn("Audio context not running or sound not loaded.");
-            }
-        }
-    }
-
+    // All sound generation/playback code has been removed per user request.
 
     // --- Game Object Class ---
     class Duck {
@@ -408,24 +225,26 @@
             this.element.classList.add('duck');
             gameContainer.appendChild(this.element);
 
-            this.reset(); // Initial position and direction
+            this.reset();
             this.element.style.left = `${this.x}px`;
             this.element.style.top = `${this.y}px`;
-
-            this.element.addEventListener('click', (event) => this.handleHit(event));
         }
 
         reset() {
             const side = Math.random() < 0.5 ? 'left' : 'right';
             this.x = side === 'left' ? -DUCK_SIZE : gameContainer.clientWidth;
-            this.y = Math.random() * (gameContainer.clientHeight * 0.7 - DUCK_HEIGHT) + (gameContainer.clientHeight * 0.1); // Avoid extreme top/bottom
-            this.speed = Math.random() * (DUCK_MAX_SPEED - DUCK_SPEED_BASE) + DUCK_SPEED_BASE;
-            this.directionX = side === 'left' ? 1 : -1; // 1 for right, -1 for left
-            this.directionY = Math.random() < 0.5 ? 1 : -1; // 1 for down, -1 for up
+            this.y = Math.random() * (gameContainer.clientHeight * 0.7 - DUCK_HEIGHT) + (gameContainer.clientHeight * 0.1);
+            
+            // Speed increases with each round
+            this.speed = (Math.random() * (DUCK_MAX_SPEED - DUCK_SPEED_BASE) + DUCK_SPEED_BASE) * (1 + (currentRound - 1) * 0.2);
+            
+            this.directionX = side === 'left' ? 1 : -1;
+            this.directionY = Math.random() < 0.5 ? 1 : -1;
             this.isShot = false;
             this.element.classList.remove('shot');
             this.element.style.opacity = 1;
-            this.element.style.transform = `scaleX(${this.directionX})`; // Flip horizontally
+            // Flip the duck element to face the direction of travel
+            this.element.style.transform = `scaleX(${this.directionX > 0 ? 1 : -1})`;
         }
 
         update(deltaTime) {
@@ -434,11 +253,16 @@
             // Move horizontally
             this.x += this.directionX * this.speed * deltaTime;
 
-            // Simple vertical bounce (oscillating movement)
-            this.y += this.directionY * (this.speed * 0.5) * deltaTime; // Slower vertical movement
+            // Simple vertical movement
+            this.y += this.directionY * (this.speed * 0.5) * deltaTime;
 
             // Bounce off top/bottom boundaries
-            if (this.y < 0 || this.y > gameContainer.clientHeight * 0.7 - DUCK_HEIGHT) {
+            const skyHeightLimit = gameContainer.clientHeight * 0.7 - DUCK_HEIGHT;
+            if (this.y < 0) {
+                this.y = 0;
+                this.directionY *= -1;
+            } else if (this.y > skyHeightLimit) {
+                this.y = skyHeightLimit;
                 this.directionY *= -1;
             }
 
@@ -454,24 +278,23 @@
             return 'flying';
         }
 
-        handleHit(event) {
-            event.stopPropagation(); // Prevent container click from registering
+        handleHit() {
             if (this.isShot || gameState !== 'PLAYING') return;
 
             this.isShot = true;
             this.element.classList.add('shot');
-            playSound(hitSound); // Play hit sound
-            score += 100;
+            // No sound effect
+            score += 100 * currentRound;
             ducksShotThisRound++;
             updateScoreBoard();
-            this.element.style.pointerEvents = 'none'; // Prevent further clicks
+            this.element.style.pointerEvents = 'none';
 
             // Remove duck after it falls
             setTimeout(() => {
                 if (this.element.parentNode === gameContainer) {
                     this.element.remove();
                 }
-            }, 1000); // 1 second for fall animation
+            }, 1000);
         }
     }
 
@@ -488,7 +311,7 @@
             ducksOnScreen.push(newDuck);
             ducksToSpawnThisRound--;
         } else if (ducksOnScreen.length === 0) {
-            // All ducks spawned and either shot or escaped
+            // Check round end only if no more ducks are left to spawn
             checkRoundEnd();
         }
     }
@@ -496,21 +319,19 @@
     function gameLoop(currentTime) {
         if (gameState !== 'PLAYING') return;
 
-        const deltaTime = (currentTime - lastTime) / 1000; // in seconds
+        const deltaTime = (currentTime - lastTime) / 1000;
         lastTime = currentTime;
 
         // Update ducks
         for (let i = ducksOnScreen.length - 1; i >= 0; i--) {
             const duck = ducksOnScreen[i];
             const status = duck.update(deltaTime);
-            if (status === 'escaped') {
-                ducksOnScreen.splice(i, 1);
-            } else if (duck.isShot && duck.element.parentNode === null) { // Check if element was removed by its own logic
+            if (status === 'escaped' || (duck.isShot && duck.element.parentNode === null)) {
                 ducksOnScreen.splice(i, 1);
             }
         }
 
-        // After updating, check if all ducks are gone and new ducks need to be spawned
+        // Check if all ducks are gone and new ducks need to be spawned
         if (ducksOnScreen.length === 0 && ducksToSpawnThisRound === 0) {
              checkRoundEnd();
         }
@@ -520,30 +341,43 @@
 
     function startRound() {
         currentRound++;
-        ducksToSpawnThisRound = Math.min(10, 5 + currentRound - 1); // More ducks each round, max 10
+        
+        // FIX: Calculate total ducks for the round and store it separately
+        totalDucksInRound = Math.min(10, 5 + currentRound);
+        ducksToSpawnThisRound = totalDucksInRound;
+
         ducksShotThisRound = 0;
         shotsRemaining = 3;
+        
+        // Clear previous ducks
         ducksOnScreen.forEach(duck => duck.element.remove());
         ducksOnScreen = [];
+        
         updateScoreBoard();
         messageBox.classList.add('hidden');
         gameState = 'PLAYING';
         lastTime = performance.now();
         requestAnimationFrame(gameLoop);
 
-        // Spawn first duck immediately, then others at intervals
-        spawnDuck();
-        spawnInterval = setInterval(spawnDuck, 2000 - Math.min(1500, (currentRound - 1) * 100)); // Faster spawning
+        // Calculate spawn rate (gets faster each round)
+        const spawnDelay = Math.max(500, 2500 - (currentRound * 300));
+
+        spawnDuck(); // Spawn the first duck immediately
+        spawnInterval = setInterval(spawnDuck, spawnDelay);
     }
 
     function checkRoundEnd() {
-        // Only trigger round end if all ducks for this round have been handled (spawned and either shot or escaped)
+        // This function should only run once all ducks (spawned and flying) are gone.
         if (ducksToSpawnThisRound === 0 && ducksOnScreen.length === 0) {
             clearInterval(spawnInterval);
-            if (ducksShotThisRound >= 3) { // Player must shoot at least 3 ducks to advance
-                playSound(roundCompleteSound);
+            
+            // FIX: Use totalDucksInRound to calculate required hits
+            const requiredHits = Math.ceil(totalDucksInRound * 0.6); 
+
+            if (ducksShotThisRound >= requiredHits) {
+                // No sound effect
                 messageTitle.textContent = `ROUND ${currentRound} COMPLETE!`;
-                messageText.innerHTML = `You shot ${ducksShotThisRound} ducks. Get ready for the next wave!`;
+                messageText.innerHTML = `Great shooting! You hit ${ducksShotThisRound}/${totalDucksInRound} ducks (Need ${requiredHits}). Ready for Round ${currentRound + 1}?`;
                 startButton.textContent = "NEXT ROUND";
                 messageBox.classList.remove('hidden');
                 gameState = 'ROUND_COMPLETE';
@@ -557,83 +391,98 @@
         gameState = 'GAME_OVER';
         cancelAnimationFrame(gameLoop);
         clearInterval(spawnInterval);
-        playSound(gameOverSound);
+        // No sound effect
         messageTitle.textContent = "GAME OVER!";
-        messageText.innerHTML = `Final Score: ${score}<br>You made it to round ${currentRound}.`;
+        messageText.innerHTML = `Final Score: ${score}<br>You made it to Round ${currentRound}. Try again!`;
         startButton.textContent = "PLAY AGAIN";
         messageBox.classList.remove('hidden');
 
-        // Clear any remaining ducks
         ducksOnScreen.forEach(duck => duck.element.remove());
         ducksOnScreen = [];
     }
 
-    // --- Event Listeners ---
+    // --- Event Listeners (Adaptive Input) ---
 
-    // Move crosshair with mouse/touch
+    // Function to get accurate game container boundaries for collision checking
+    function getGameRect() {
+        return gameContainer.getBoundingClientRect();
+    }
+
+    // 1. Desktop/Mouse Crosshair Tracking
     gameContainer.addEventListener('mousemove', (e) => {
-        crosshair.style.left = `${e.clientX - gameContainer.getBoundingClientRect().left}px`;
-        crosshair.style.top = `${e.clientY - gameContainer.getBoundingClientRect().top}px`;
+        const rect = getGameRect();
+        crosshair.style.left = `${e.clientX - rect.left}px`;
+        crosshair.style.top = `${e.clientY - rect.top}px`;
     });
 
+    // 2. Mobile/Touch Crosshair Tracking (for better feel)
     gameContainer.addEventListener('touchmove', (e) => {
         if (e.touches.length > 0) {
-            crosshair.style.left = `${e.touches[0].clientX - gameContainer.getBoundingClientRect().left}px`;
-            crosshair.style.top = `${e.touches[0].clientY - gameContainer.getBoundingClientRect().top}px`;
-            e.preventDefault(); // Prevent scrolling
+            const rect = getGameRect();
+            const touch = e.touches[0];
+            crosshair.style.left = `${touch.clientX - rect.left}px`;
+            crosshair.style.top = `${touch.clientY - rect.top}px`;
+            e.preventDefault();
         }
-    });
+    }, { passive: false });
 
-    // Handle shooting
+
+    // 3. Handle shooting (Click/Tap)
     gameContainer.addEventListener('click', (e) => {
         if (gameState !== 'PLAYING') return;
 
         if (shotsRemaining > 0) {
             shotsRemaining--;
-            playSound(shotSound);
+            // No sound effect
             updateScoreBoard();
+
+            const rect = getGameRect();
+            const clickX = e.clientX;
+            const clickY = e.clientY;
 
             // Create a temporary shot splash effect
             const splash = document.createElement('div');
-            splash.classList.add('splash');
-            splash.style.left = `${e.clientX - gameContainer.getBoundingClientRect().left}px`;
-            splash.style.top = `${e.clientY - gameContainer.getBoundingClientRect().top}px`;
+            splash.style.cssText = `
+                position: absolute;
+                width: 10px;
+                height: 10px;
+                background-color: #ff0000;
+                border-radius: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 99;
+                box-shadow: 0 0 5px #ff0000;
+            `;
+            splash.style.left = `${clickX - rect.left}px`;
+            splash.style.top = `${clickY - rect.top}px`;
             gameContainer.appendChild(splash);
             setTimeout(() => splash.remove(), 300);
 
             let hitSomething = false;
             for (const duck of ducksOnScreen) {
-                // Check if the click coordinates are within a duck's bounds
                 const duckRect = duck.element.getBoundingClientRect();
-                const clickX = e.clientX;
-                const clickY = e.clientY;
 
+                // Collision Check
                 if (clickX >= duckRect.left && clickX <= duckRect.right &&
                     clickY >= duckRect.top && clickY <= duckRect.bottom && !duck.isShot) {
-                    duck.handleHit(e); // Let the duck handle its own hit
+                    duck.handleHit();
                     hitSomething = true;
                     break;
                 }
             }
 
             if (!hitSomething) {
-                playSound(missSound);
+                // No sound effect
             }
 
-            if (shotsRemaining === 0 && ducksOnScreen.length === 0 && ducksToSpawnThisRound === 0) {
-                // If no shots left and no ducks on screen (and no more to spawn)
+            // Check end conditions
+            const allDucksHandled = ducksOnScreen.length === 0 || ducksOnScreen.every(duck => duck.isShot);
+            
+            // If out of shots AND all ducks are either spawned/shot/escaped, check round end.
+            if (shotsRemaining === 0 && ducksToSpawnThisRound === 0 && ducksOnScreen.length === 0) {
                 checkRoundEnd();
-            } else if (shotsRemaining === 0 && ducksOnScreen.every(duck => duck.isShot)) {
-                 // If no shots left and all currently flying ducks are shot
-                 checkRoundEnd();
-            }
-        } else {
-             // If out of shots, but still ducks flying, it's game over
-            if (ducksOnScreen.length > 0 && !ducksOnScreen.every(duck => duck.isShot)) {
-                 endGame();
-            } else if (ducksToSpawnThisRound === 0 && ducksOnScreen.length === 0) {
-                // All ducks handled, no more shots, no more to spawn
-                checkRoundEnd();
+            } else if (shotsRemaining === 0 && ducksToSpawnThisRound > 0) {
+                 // If the player runs out of shots before all ducks have spawned, it's game over.
+                endGame();
             }
         }
     });
@@ -641,7 +490,7 @@
     startButton.addEventListener('click', () => {
         if (gameState === 'START' || gameState === 'GAME_OVER') {
             score = 0;
-            currentRound = 0; // Will be incremented to 1 in startRound
+            currentRound = 0;
             startRound();
         } else if (gameState === 'ROUND_COMPLETE') {
             startRound();
@@ -649,10 +498,9 @@
     });
 
     // Initial setup on window load
-    window.addEventListener('load', async () => {
-        await loadSounds(); // Load sounds when the page loads
-        messageBox.classList.remove('hidden'); // Show start screen
-        updateScoreBoard(); // Initialize scoreboard
+    window.addEventListener('load', () => {
+        messageBox.classList.remove('hidden');
+        updateScoreBoard();
     });
 
 </script>
