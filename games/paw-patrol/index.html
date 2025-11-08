@@ -1,1 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paw Patrol Memory Game - Image Match</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the Paw Patrol theme */
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #0076a8; /* Deep Paw Patrol Blue */
+        }
+        .card {
+            width: 100%;
+            height: 100%;
+            aspect-ratio: 1 / 1; /* Ensures cards are square */
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+            border-radius: 12px;
+            box-shadow: 0 6px 0 0 #005073; /* Shadow for 3D press effect */
+            position: relative;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent; /* Improve mobile response */
+        }
 
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .card.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 3rem; 
+            font-weight: 700;
+        }
+
+        /* Back of the card (Paw Patrol Badge) */
+        .card-back {
+            background: linear-gradient(135deg, #fce38a, #ff7b00); /* Yellow-Orange Gradient */
+            color: #ffffff;
+            border: 4px solid #ff7b00;
+            line-height: 1;
+        }
+
+        /* Front of the card (Pup Image) */
+        .card-image-face {
+            background-color: #ffffff;
+            border: 4px solid #005073;
+            transform: rotateY(180deg);
+            /* Image display properties */
+            background-size: cover; 
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .card.matched {
+            pointer-events: none;
+            animation: match-fade 0.5s forwards;
+        }
+
+        @keyframes match-fade {
+            to {
+                opacity: 0.3;
+                transform: scale(0.95);
+            }
+        }
+        
+        /* Layout adjustment for 4 columns */
+        #game-board {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    </style>
+    <!-- Firebase Imports for Compliance -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Use global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        if (Object.keys(firebaseConfig).length > 0) {
+            try {
+                const app = initializeApp(firebaseConfig);
+                const db = getFirestore(app);
+                const auth = getAuth(app);
+                
+                async function authenticate() {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("Firebase signed in with custom token.");
+                    } else {
+                        await signInAnonymously(auth);
+                        console.log("Firebase signed in anonymously.");
+                    }
+                }
+                authenticate();
+            } catch (error) {
+                console.error("Firebase initialization or authentication failed:", error);
+            }
+        } else {
+            console.log("Firebase config not available. Proceeding without persistent storage.");
+        }
+    </script>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <div class="w-full max-w-2xl bg-white p-6 rounded-3xl shadow-2xl">
+        <h1 class="text-4xl font-bold text-center text-[#e83e58] mb-2 uppercase tracking-wider">
+            Pup Picture Match!
+        </h1>
+        <p class="text-center text-gray-600 mb-6">Match the 8 pups in this 4x4 grid!</p>
+
+        <!-- Game Info -->
+        <div class="flex justify-between items-center text-xl font-bold mb-4 text-[#005073]">
+            <span>Moves: <span id="moves-count">0</span></span>
+            <span>Matches: <span id="matches-count">0/8</span></span>
+        </div>
+
+        <!-- Game Board (4x4 Grid for 16 cards) -->
+        <div id="game-board" class="grid grid-cols-4 gap-3 md:gap-4">
+            <!-- Cards will be injected here by JavaScript -->
+        </div>
+
+        <!-- Message Box -->
+        <div id="message-box" class="mt-6 h-10 flex items-center justify-center">
+            <p id="game-message" class="text-2xl font-extrabold text-[#e83e58] tracking-widest"></p>
+        </div>
+
+        <!-- Reset Button -->
+        <div class="mt-4 flex justify-center">
+            <button id="reset-button" class="bg-[#e83e58] hover:bg-[#c9324a] text-white font-bold py-3 px-8 rounded-full transition duration-300 shadow-lg text-lg">
+                Reset Game
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME LOGIC ---
+
+        const IMAGE_BASE_URL = "https://irmcintosh.github.io/games/paw-patrol/images/";
+
+        // Array of 8 characters for a 4x4 grid (16 cards): Chase, Liberty, Marshall, Rocky, Rubble, Skye, Zuma, and Ryder.
+        const pawPatrolPups = [
+            { id: 1, name: 'chase' },
+            { id: 2, name: 'liberty' },
+            { id: 3, name: 'marshall' },
+            { id: 4, name: 'rocky' },
+            { id: 5, name: 'rubble' },
+            { id: 6, name: 'sky' },
+            { id: 7, name: 'zuma' },
+            { id: 8, name: 'ryder' }, // Using Ryder as the eighth character.
+        ];
+
+        const gameBoard = document.getElementById('game-board');
+        const movesCountElement = document.getElementById('moves-count');
+        const matchesCountElement = document.getElementById('matches-count');
+        const gameMessageElement = document.getElementById('game-message');
+        const resetButton = document.getElementById('reset-button');
+
+        let deck = [];
+        let flippedCards = [];
+        let matches = 0;
+        let moves = 0;
+        let gameLocked = false;
+        const totalMatches = pawPatrolPups.length; // 8 pairs
+
+        // Utility function to shuffle an array
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function createDeck() {
+            // Create pairs
+            const pairedPups = [...pawPatrolPups, ...pawPatrolPups];
+            shuffle(pairedPups);
+
+            deck = pairedPups.map((pup, index) => ({
+                ...pup,
+                uniqueId: index,
+                isFlipped: false,
+                isMatched: false
+            }));
+        }
+
+        function updateDisplay() {
+            movesCountElement.textContent = moves;
+            matchesCountElement.textContent = `${matches}/${totalMatches}`;
+        }
+
+        function getImageUrl(pupName) {
+            // Constructs the full URL for the image
+            const url = `${IMAGE_BASE_URL}${pupName}.jpg`;
+            // If the image fails to load, the browser should show a broken image icon.
+            return url;
+        }
+
+        function renderBoard() {
+            gameBoard.innerHTML = '';
+            deck.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = `card ${card.isFlipped ? 'flipped' : ''} ${card.isMatched ? 'matched' : ''}`;
+                cardElement.dataset.uniqueId = card.uniqueId;
+
+                const pupImageUrl = getImageUrl(card.name);
+
+                cardElement.innerHTML = `
+                    <div class="card-inner">
+                        <!-- Card Back (Paw Patrol Badge) -->
+                        <div class="card-face card-back">🐾</div> 
+                        <!-- Card Front (Pup Image) -->
+                        <div class="card-face card-image-face" 
+                             style="background-image: url('${pupImageUrl}');">
+                        </div>
+                    </div>
+                `;
+
+                // Attach click event only if not matched
+                if (!card.isMatched) {
+                    cardElement.addEventListener('click', () => handleCardClick(card.uniqueId));
+                }
+
+                gameBoard.appendChild(cardElement);
+            });
+        }
+        
+        function showMessage(text, duration = 1500) {
+            gameMessageElement.textContent = text;
+            gameMessageElement.classList.add('animate-pulse');
+            setTimeout(() => {
+                gameMessageElement.textContent = '';
+                gameMessageElement.classList.remove('animate-pulse');
+            }, duration);
+        }
+
+        function checkMatch() {
+            const [cardA, cardB] = flippedCards;
+            gameLocked = true;
+            moves++;
+            updateDisplay();
+
+            if (cardA.id === cardB.id) {
+                // Match Found!
+                matches++;
+                cardA.isMatched = true;
+                cardB.isMatched = true;
+                // Success message as requested
+                showMessage("SUCCESS!", 1200);
+
+                setTimeout(() => {
+                    renderBoard(); // Re-render to apply the 'matched' styles
+                    flippedCards = [];
+                    gameLocked = false;
+                    
+                    if (matches === totalMatches) {
+                        // Game Over
+                        showMessage("Mission Complete! You found all the pups!", 5000);
+                        gameLocked = true;
+                    }
+                }, 600);
+            } else {
+                // No Match
+                setTimeout(() => {
+                    // Flip cards back
+                    cardA.isFlipped = false;
+                    cardB.isFlipped = false;
+                    renderBoard();
+                    flippedCards = [];
+                    gameLocked = false;
+                }, 1000);
+            }
+        }
+
+        function handleCardClick(uniqueId) {
+            if (gameLocked || flippedCards.length === 2) return;
+
+            const card = deck.find(c => c.uniqueId === uniqueId);
+            if (card.isFlipped || card.isMatched) return;
+
+            // Flip the card and add it to the flipped list
+            card.isFlipped = true;
+            flippedCards.push(card);
+            renderBoard();
+
+            if (flippedCards.length === 2) {
+                checkMatch();
+            }
+        }
+
+        function initGame() {
+            deck = [];
+            flippedCards = [];
+            matches = 0;
+            moves = 0;
+            gameLocked = false;
+            gameMessageElement.textContent = '';
+
+            createDeck();
+            renderBoard();
+            updateDisplay();
+        }
+
+        resetButton.addEventListener('click', initGame);
+
+        // Start the game when the window loads
+        window.onload = initGame;
+
+    </script>
+</body>
+</html>
