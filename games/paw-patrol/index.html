@@ -161,6 +161,18 @@
 
         const IMAGE_BASE_URL = "https://irmcintosh.github.io/games/paw-patrol/images/";
 
+        // Map character name (key) to their catchphrase (value)
+        const CATCHPHRASES = {
+            'ryder': "PAW Patrol is on a roll!",
+            'chase': "Chase is on the case!",
+            'marshall': "Ready for a ruff-ruff-resuce!",
+            'sky': "Let's take to the sky!",
+            'rocky': "Don't lose it, reuse it!",
+            'rubble': "Rubble on the double!",
+            'everest': "Ice or snow, I'm ready to go!", // Included even if not currently in the deck
+            'liberty': "Liberty's ready to roll!",
+        };
+
         // Array of 8 characters for a 4x4 grid (16 cards): Chase, Liberty, Marshall, Rocky, Rubble, Skye, Zuma, and Ryder.
         const pawPatrolPups = [
             { id: 1, name: 'chase' },
@@ -248,6 +260,7 @@
             });
         }
         
+        // Updated showMessage function to display the character's catchphrase
         function showMessage(text, duration = 1500) {
             gameMessageElement.textContent = text;
             gameMessageElement.classList.add('animate-pulse');
@@ -268,8 +281,13 @@
                 matches++;
                 cardA.isMatched = true;
                 cardB.isMatched = true;
-                // Success message as requested
-                showMessage("SUCCESS!", 1200);
+                
+                // Get the catchphrase for the matched character
+                const characterName = cardA.name;
+                const matchMessage = CATCHPHRASES[characterName] || "SUCCESS!"; // Fallback to "SUCCESS!"
+                
+                // Display the catchphrase
+                showMessage(matchMessage, 1800);
 
                 setTimeout(() => {
                     renderBoard(); // Re-render to apply the 'matched' styles
@@ -278,7 +296,7 @@
                     
                     if (matches === totalMatches) {
                         // Game Over
-                        showMessage("Mission Complete! You found all the pups!", 5000);
+                        showMessage("No job is too big, no pup is too small! Game Complete!", 5000);
                         gameLocked = true;
                     }
                 }, 600);
