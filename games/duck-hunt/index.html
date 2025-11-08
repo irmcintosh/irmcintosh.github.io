@@ -41,12 +41,26 @@
             touch-action: manipulation;
         }
 
-        /* Responsive UI elements */
+        /* Responsive UI elements (Increased size for mobile readability) */
         #scoreBoard, #shotsDisplay {
-            font-size: 0.8rem;
-            padding: 5px 10px;
+            font-size: 0.9rem; /* Slightly larger base font */
+            padding: 8px 12px; /* Increased padding */
             color: white;
             text-shadow: 2px 2px 0 #000;
+        }
+
+        /* Adjust font size on smaller screens using media query for better readability */
+        @media (max-width: 600px) {
+            #scoreBoard, #shotsDisplay {
+                font-size: 0.75rem;
+                padding: 5px 8px;
+            }
+            #messageBox h2 {
+                font-size: 1.5rem;
+            }
+            #messageBox p {
+                font-size: 0.8rem;
+            }
         }
 
         .duck {
@@ -152,28 +166,8 @@
             font-size: 0.9rem;
             margin-bottom: 25px;
         }
-
-        #startButton {
-            background-color: #f9d71c;
-            color: #333;
-            padding: 12px 25px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.1s;
-            font-family: 'Press Start 2P', cursive;
-            box-shadow: 0 4px #e5c100;
-        }
-
-        #startButton:hover {
-            background-color: #e5c100;
-        }
         
-        #startButton:active {
-            transform: translateY(4px);
-            box-shadow: 0 0 #e5c100;
-        }
+        /* Removed startButton styles as the button is gone */
     </style>
 </head>
 <body>
@@ -185,8 +179,8 @@
 
     <div id="messageBox">
         <h2 id="messageTitle">Duck Hunt Pro</h2>
-        <p id="messageText">Shoot the ducks before they escape! You need to hit 60% of the ducks to progress to the next round. Good luck!</p>
-        <button id="startButton">START GAME</button>
+        <p id="messageText">Tap/Click anywhere to begin the hunt! You need to hit 60% of the ducks to progress to the next round.</p>
+        <!-- Removed startButton -->
     </div>
 </div>
 
@@ -198,7 +192,7 @@
     const messageBox = document.getElementById('messageBox');
     const messageTitle = document.getElementById('messageTitle');
     const messageText = document.getElementById('messageText');
-    const startButton = document.getElementById('startButton');
+    // startButton is no longer needed
 
     let score = 0;
     let shotsRemaining = 3;
@@ -215,8 +209,6 @@
     const DUCK_MAX_SPEED = 200;
     const DUCK_SIZE = 70;
     const DUCK_HEIGHT = 50;
-
-    // All sound generation/playback code has been removed per user request.
 
     // --- Game Object Class ---
     class Duck {
@@ -342,7 +334,7 @@
     function startRound() {
         currentRound++;
         
-        // FIX: Calculate total ducks for the round and store it separately
+        // Calculate total ducks for the round and store it separately
         totalDucksInRound = Math.min(10, 5 + currentRound);
         ducksToSpawnThisRound = totalDucksInRound;
 
@@ -371,14 +363,13 @@
         if (ducksToSpawnThisRound === 0 && ducksOnScreen.length === 0) {
             clearInterval(spawnInterval);
             
-            // FIX: Use totalDucksInRound to calculate required hits
+            // Use totalDucksInRound to calculate required hits
             const requiredHits = Math.ceil(totalDucksInRound * 0.6); 
 
             if (ducksShotThisRound >= requiredHits) {
-                // No sound effect
                 messageTitle.textContent = `ROUND ${currentRound} COMPLETE!`;
-                messageText.innerHTML = `Great shooting! You hit ${ducksShotThisRound}/${totalDucksInRound} ducks (Need ${requiredHits}). Ready for Round ${currentRound + 1}?`;
-                startButton.textContent = "NEXT ROUND";
+                // Updated text: tell the user to tap/click
+                messageText.innerHTML = `Great shooting! You hit ${ducksShotThisRound}/${totalDucksInRound} ducks (Need ${requiredHits}). Tap/Click anywhere for Round ${currentRound + 1}!`;
                 messageBox.classList.remove('hidden');
                 gameState = 'ROUND_COMPLETE';
             } else {
@@ -391,10 +382,9 @@
         gameState = 'GAME_OVER';
         cancelAnimationFrame(gameLoop);
         clearInterval(spawnInterval);
-        // No sound effect
         messageTitle.textContent = "GAME OVER!";
-        messageText.innerHTML = `Final Score: ${score}<br>You made it to Round ${currentRound}. Try again!`;
-        startButton.textContent = "PLAY AGAIN";
+        // Updated text: tell the user to tap/click
+        messageText.innerHTML = `Final Score: ${score}<br>You made it to Round ${currentRound}. Tap/Click anywhere to play again!`;
         messageBox.classList.remove('hidden');
 
         ducksOnScreen.forEach(duck => duck.element.remove());
@@ -427,30 +417,41 @@
     }, { passive: false });
 
 
-    // 3. Handle shooting (Click/Tap)
+    // 3. Handle shooting (Click/Tap) - MODIFIED TO INCLUDE START/RESTART LOGIC
     gameContainer.addEventListener('click', (e) => {
+        // --- START/RESTART/NEXT ROUND Logic (runs first) ---
+        if (gameState === 'START' || gameState === 'GAME_OVER') {
+            score = 0;
+            currentRound = 0;
+            startRound();
+            return;
+        } else if (gameState === 'ROUND_COMPLETE') {
+            startRound();
+            return;
+        }
+        // ---------------------------------------------------
+
         if (gameState !== 'PLAYING') return;
 
         if (shotsRemaining > 0) {
             shotsRemaining--;
-            // No sound effect
             updateScoreBoard();
 
             const rect = getGameRect();
             const clickX = e.clientX;
             const clickY = e.clientY;
 
-            // Create a temporary shot splash effect
+            // Create a temporary shot splash effect (SIZE INCREASED for better touch visibility)
             const splash = document.createElement('div');
             splash.style.cssText = `
                 position: absolute;
-                width: 10px;
-                height: 10px;
-                background-color: #ff0000;
+                width: 20px; /* Larger for better touch target visibility */
+                height: 20px;
+                background-color: rgba(255, 0, 0, 0.8); /* Slightly opaque red */
                 border-radius: 50%;
                 transform: translate(-50%, -50%);
                 z-index: 99;
-                box-shadow: 0 0 5px #ff0000;
+                box-shadow: 0 0 10px #ff0000;
             `;
             splash.style.left = `${clickX - rect.left}px`;
             splash.style.top = `${clickY - rect.top}px`;
@@ -470,13 +471,7 @@
                 }
             }
 
-            if (!hitSomething) {
-                // No sound effect
-            }
-
             // Check end conditions
-            const allDucksHandled = ducksOnScreen.length === 0 || ducksOnScreen.every(duck => duck.isShot);
-            
             // If out of shots AND all ducks are either spawned/shot/escaped, check round end.
             if (shotsRemaining === 0 && ducksToSpawnThisRound === 0 && ducksOnScreen.length === 0) {
                 checkRoundEnd();
@@ -487,15 +482,7 @@
         }
     });
 
-    startButton.addEventListener('click', () => {
-        if (gameState === 'START' || gameState === 'GAME_OVER') {
-            score = 0;
-            currentRound = 0;
-            startRound();
-        } else if (gameState === 'ROUND_COMPLETE') {
-            startRound();
-        }
-    });
+    // Removed startButton click listener
 
     // Initial setup on window load
     window.addEventListener('load', () => {
