@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paw Patrol Memory Game - Image Match (Audio)</title>
+    <title>Paw Patrol Memory Game - Image Match (Pre-recorded Audio)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom styles for the Paw Patrol theme */
@@ -128,7 +128,7 @@
 
     <div class="w-full max-w-2xl bg-white p-6 rounded-3xl shadow-2xl">
         <h1 class="text-4xl font-bold text-center text-[#e83e58] mb-2 uppercase tracking-wider">
-            Pup Picture Match! (With Sound!)
+            Pup Picture Match! (Pre-recorded Audio)
         </h1>
         <p class="text-center text-gray-600 mb-6">Match the 8 pups in this 4x4 grid!</p>
 
@@ -160,20 +160,20 @@
         // --- GAME LOGIC ---
 
         const IMAGE_BASE_URL = "https://irmcintosh.github.io/games/paw-patrol/images/";
-        const TTS_API_MODEL = "gemini-2.5-flash-preview-tts";
-        const API_KEY = ""; // Kept empty for Canvas environment
 
-        // Map character name (key) to their catchphrase (value)
-        const CATCHPHRASES = {
-            'ryder': "PAW Patrol is on a roll!",
-            'chase': "Chase is on the case!",
-            'marshall': "Ready for a ruff-ruff-rescue!",
-            'sky': "Let's take to the sky!",
-            'rocky': "Don't lose it, reuse it!",
-            'rubble': "Rubble on the double!",
-            'everest': "Ice or snow, I'm ready to go!", 
-            'liberty': "Liberty's ready to roll!",
-            'zuma': "Ready, set, get wet!", // Adding Zuma's catchphrase
+        // Map character name (key) to their catchphrase TEXT (for display) and the AUDIO FILE URL.
+        const AUDIO_URL_BASE = "https://yourdomain.com/audio/"; // *** CHANGE THIS TO YOUR HOSTED AUDIO FOLDER ***
+
+        const PUPS_DATA = {
+            'ryder': { text: "PAW Patrol is on a roll!", audio: AUDIO_URL_BASE + 'ryder.mp3' },
+            'chase': { text: "Chase is on the case!", audio: AUDIO_URL_BASE + 'chase.mp3' },
+            'marshall': { text: "Ready for a ruff-ruff-rescue!", audio: AUDIO_URL_BASE + 'marshall.mp3' },
+            'sky': { text: "Let's take to the sky!", audio: AUDIO_URL_BASE + 'sky.mp3' },
+            'rocky': { text: "Don't lose it, reuse it!", audio: AUDIO_URL_BASE + 'rocky.mp3' },
+            'rubble': { text: "Rubble on the double!", audio: AUDIO_URL_BASE + 'rubble.mp3' },
+            'everest': { text: "Ice or snow, I'm ready to go!", audio: AUDIO_URL_BASE + 'everest.mp3' }, 
+            'liberty': { text: "Liberty's ready to roll!", audio: AUDIO_URL_BASE + 'liberty.mp3' },
+            'zuma': { text: "Ready, set, get wet!", audio: AUDIO_URL_BASE + 'zuma.mp3' },
         };
 
         // Array of 8 characters for a 4x4 grid (16 cards)
@@ -203,145 +203,27 @@
         let messageTimeoutId = null;
 
 
-        // --- UTILITY FUNCTIONS FOR TTS AUDIO PROCESSING ---
-
-        // Converts Base64 string to ArrayBuffer (for PCM data)
-        function base64ToArrayBuffer(base64) {
-            const binary_string = window.atob(base64);
-            const len = binary_string.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binary_string.charCodeAt(i);
+        // --- AUDIO PLAYBACK FUNCTION ---
+        
+        function playSound(url) {
+            if (!url) {
+                console.warn("Attempted to play sound with no URL.");
+                return;
             }
-            return bytes.buffer;
-        }
-
-        // Converts raw PCM data to a standard WAV audio file (Blob)
-        function pcmToWav(pcm16, sampleRate, mimeType) {
-            const buffer = new ArrayBuffer(44 + pcm16.length * 2);
-            const view = new DataView(buffer);
-            
-            // RIFF chunk descriptor
-            writeString(view, 0, 'RIFF');
-            view.setUint32(4, 36 + pcm16.length * 2, true);
-            writeString(view, 8, 'WAVE');
-            
-            // FMT sub-chunk
-            writeString(view, 12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true); // PCM format
-            view.setUint16(22, 1, true); // Mono
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * 2, true); // Byte rate (SampleRate * 1 * 2)
-            view.setUint16(32, 2, true); // Block align (1 channel * 2 bytes/sample)
-            view.setUint16(34, 16, true); // Bits per sample
-            
-            // DATA sub-chunk
-            writeString(view, 36, 'data');
-            view.setUint32(40, pcm16.length * 2, true);
-            
-            // Write the PCM data
-            let offset = 44;
-            for (let i = 0; i < pcm16.length; i++) {
-                view.setInt16(offset, pcm16[i], true);
-                offset += 2;
-            }
-
-            return new Blob([view], { type: mimeType.split(';')[0].replace('L16', 'wav') });
-        }
-
-        function writeString(view, offset, string) {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
+            try {
+                // Using the simple Audio constructor for maximum compatibility
+                const audio = new Audio(url);
+                // Ensure audio is reset to the start if it was played recently
+                audio.currentTime = 0; 
+                audio.play().catch(e => {
+                    // This is usually caught if a user hasn't interacted with the page yet
+                    console.info("Audio playback prevented by browser policy (user must interact first):", e);
+                });
+            } catch (e) {
+                console.error("Error creating or playing audio:", e);
             }
         }
 
-        function playAudio(audioBlob, onEndedCallback) {
-            const audioUrl = URL.createObjectURL(audioBlob);
-            const audio = new Audio(audioUrl);
-            audio.onended = () => {
-                URL.revokeObjectURL(audioUrl);
-                if (onEndedCallback) onEndedCallback();
-            };
-            audio.play().catch(e => console.error("Audio playback failed:", e));
-        }
-
-        // --- TTS API CALLER ---
-
-        async function speakCatchphrase(text, onAudioEnded) {
-            // Lock the game while generating and playing sound
-            gameLocked = true;
-            displayMessage(`"${text}"`, 99999); 
-            
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${TTS_API_MODEL}:generateContent?key=${API_KEY}`;
-            const payload = {
-                contents: [{
-                    parts: [{ text: text }]
-                }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: "Kore" } // A firm, clear voice
-                        }
-                    }
-                },
-                model: TTS_API_MODEL
-            };
-
-            const maxRetries = 5;
-            let currentRetry = 0;
-
-            const executeFetch = async () => {
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`API returned status ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    const part = result?.candidates?.[0]?.content?.parts?.[0];
-                    const audioData = part?.inlineData?.data;
-                    const mimeType = part?.inlineData?.mimeType;
-
-                    if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
-                        // Extract sample rate from mimeType, e.g., audio/L16;rate=24000
-                        const rateMatch = mimeType.match(/rate=(\d+)/);
-                        const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
-                        
-                        const pcmData = base64ToArrayBuffer(audioData);
-                        // PCM data is signed 16-bit
-                        const pcm16 = new Int16Array(pcmData);
-                        
-                        const wavBlob = pcmToWav(pcm16, sampleRate, mimeType);
-
-                        // Play the audio and call the callback when done
-                        playAudio(wavBlob, onAudioEnded);
-                    } else {
-                        throw new Error("Invalid audio response structure or data format.");
-                    }
-                } catch (error) {
-                    currentRetry++;
-                    if (currentRetry < maxRetries) {
-                        const delay = Math.pow(2, currentRetry) * 1000;
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        return executeFetch(); // Retry
-                    } else {
-                        console.error("TTS failed after multiple retries:", error);
-                        // Fallback: just display the message and unlock
-                        displayMessage(text, 1800);
-                        onAudioEnded(); 
-                    }
-                }
-            };
-
-            await executeFetch();
-        }
 
         // --- GAME CONTROL FUNCTIONS ---
 
@@ -419,13 +301,11 @@
             gameMessageElement.textContent = text;
             gameMessageElement.classList.add('animate-pulse');
 
-            if (duration !== 99999) { // 99999 is used for persistent messages (like loading)
-                messageTimeoutId = setTimeout(() => {
-                    gameMessageElement.textContent = '';
-                    gameMessageElement.classList.remove('animate-pulse');
-                    messageTimeoutId = null;
-                }, duration);
-            }
+            messageTimeoutId = setTimeout(() => {
+                gameMessageElement.textContent = '';
+                gameMessageElement.classList.remove('animate-pulse');
+                messageTimeoutId = null;
+            }, duration);
         }
 
         function checkMatch() {
@@ -439,34 +319,29 @@
                 cardA.isMatched = true;
                 cardB.isMatched = true;
                 
-                // Get the catchphrase
-                const characterName = cardA.name;
-                const matchMessage = CATCHPHRASES[characterName] || "SUCCESS!";
+                // Get the data
+                const pupData = PUPS_DATA[cardA.name];
                 
-                // Callback function to run after audio finishes playing
-                const onAudioEnded = () => {
+                // 1. Play the pre-recorded audio instantly
+                playSound(pupData.audio);
+
+                // 2. Display the catchphrase text
+                displayMessage(pupData.text, 2500);
+                
+                // 3. Apply the 'matched' styles and clear the flipped cards
+                setTimeout(() => {
                     renderBoard(); // Re-render to apply the 'matched' styles
                     flippedCards = [];
-                    gameLocked = false; // Unlock game
+                    gameLocked = false;
                     renderBoard(); // Re-render to update clickability
                     
                     if (matches === totalMatches) {
                         displayMessage("No job is too big, no pup is too small! Game Complete!", 5000);
+                        // Optional: play a success sound
+                        // playSound(AUDIO_URL_BASE + 'success.mp3'); 
                         gameLocked = true;
-                    } else {
-                        displayMessage(""); // Clear message after success
                     }
-                };
-
-                // Speak the catchphrase (this is async and handles gameLocked logic)
-                speakCatchphrase(matchMessage, onAudioEnded);
-
-                // Wait for sound to play before clearing the match
-                setTimeout(() => {
-                    // Visually update cards to "matched" state quickly, but delay UNLOCK
-                    // until after the speech finishes (handled in onAudioEnded)
-                    renderBoard(); 
-                }, 600);
+                }, 800); // Small delay to let the animation start
 
             } else {
                 // No Match
