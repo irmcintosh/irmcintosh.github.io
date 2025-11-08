@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Racer</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the game elements */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #1a202c; /* Dark background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #gameContainer {
+            position: relative;
+            background-color: #2d3748; /* Slightly lighter dark container */
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+            width: 95vw; /* Fluid width */
+            max-width: 400px; /* Max width for desktop feel */
+            aspect-ratio: 9/16; /* Mobile portrait aspect ratio */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 0.5rem;
+            background-color: #5d6d7e; /* Road background */
+        }
+
+        #uiOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            pointer-events: none; /* Allows clicks to pass through to the canvas if needed, but not for touch controls */
+            padding: 1rem;
+        }
+
+        #controlPad {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0.5rem 0;
+            background: linear-gradient(to top, rgba(26, 32, 44, 0.8), transparent);
+            pointer-events: all; /* Important: Make controls clickable */
+            user-select: none;
+            z-index: 10;
+        }
+
+        .control-button {
+            width: 40%;
+            padding: 1rem 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(145deg, #4299e1, #2b6cb0);
+            border-radius: 0.75rem;
+            border: 3px solid #63b3ed;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .control-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(145deg, #2b6cb0, #4299e1);
+        }
+
+        #messageBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            padding: 2rem;
+            background-color: rgba(30, 41, 59, 0.95); /* Slate-800 Dark */
+            color: white;
+            border-radius: 1rem;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+            border: 4px solid #f6e05e; /* Yellow border */
+        }
+
+        .start-button {
+            margin-top: 1.5rem;
+            padding: 0.75rem 1.5rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937; /* Dark text */
+            background-color: #f6e05e; /* Yellow */
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .start-button:hover {
+            background-color: #ecc94b;
+        }
+    </style>
+</head>
+<body>
+
+<div id="gameContainer" class="flex flex-col">
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Overlay for Score and Messages -->
+    <div id="uiOverlay" class="p-4">
+        <!-- Score/Speed Display -->
+        <div class="flex justify-between w-full text-white text-lg font-bold">
+            <div id="speedDisplay" class="bg-gray-800/80 px-3 py-1 rounded-lg shadow-xl border-b-2 border-gray-700">SPEED: 0</div>
+            <div id="scoreDisplay" class="bg-gray-800/80 px-3 py-1 rounded-lg shadow-xl border-b-2 border-gray-700">SCORE: 0</div>
+        </div>
+
+        <!-- Message Box (Start/Game Over) -->
+        <div id="messageBox" class="hidden">
+            <h2 id="messageTitle" class="text-3xl font-extrabold mb-2 text-yellow-300">Mobile Racer</h2>
+            <p id="messageText" class="text-xl mb-4">Tap START to begin the race!</p>
+            <button id="startButton" class="start-button">START</button>
+        </div>
+
+        <!-- Controls (at the bottom) -->
+        <div id="controlPad">
+            <button id="leftButton" class="control-button">
+                &#9664; LEFT
+            </button>
+            <button id="rightButton" class="control-button">
+                RIGHT &#9654;
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Constants and Global Variables
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const speedDisplay = document.getElementById('speedDisplay');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const messageBox = document.getElementById('messageBox');
+    const messageTitle = document.getElementById('messageTitle');
+    const messageText = document.getElementById('messageText');
+    const startButton = document.getElementById('startButton');
+
+    let animationFrameId;
+    let gameState = 'START'; // START, PLAYING, GAME_OVER
+    let lastTime = 0;
+    let deltaTime = 0;
+
+    // Game Parameters
+    const BASE_SPEED = 200; // pixels per second (initial)
+    const MAX_SPEED = 600;
+    const SPEED_INCREMENT = 25;
+    const SCORE_MULTIPLIER = 0.01;
+    let currentSpeed = BASE_SPEED;
+    let score = 0;
+
+    // --- Utility Functions ---
+
+    // Handles the conversion of base64 audio data into a playable WAV blob
+    function base64ToArrayBuffer(base64) {
+        const binaryString = window.atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    // Creates a WAV file header
+    function pcmToWav(pcm16Data, sampleRate) {
+        const numChannels = 1;
+        const bitDepth = 16;
+        const bytesPerSample = bitDepth / 8;
+        const blockAlign = numChannels * bytesPerSample;
+        const byteRate = sampleRate * blockAlign;
+        const numBytes = pcm16Data.byteLength;
+        const totalSize = numBytes + 36; // 36 is the header size without data chunk
+
+        const buffer = new ArrayBuffer(44 + numBytes);
+        const view = new DataView(buffer);
+        let offset = 0;
+
+        function writeString(str) {
+            for (let i = 0; i < str.length; i++) {
+                view.setUint8(offset + i, str.charCodeAt(i));
+            }
+            offset += str.length;
+        }
+
+        // RIFF chunk
+        writeString('RIFF');
+        view.setUint32(offset, totalSize, true); offset += 4;
+        writeString('WAVE');
+
+        // FMT chunk
+        writeString('fmt ');
+        view.setUint32(offset, 16, true); offset += 4; // Sub-chunk size (16 for PCM)
+        view.setUint16(offset, 1, true); offset += 2; // Audio format (1 for PCM)
+        view.setUint16(offset, numChannels, true); offset += 2;
+        view.setUint32(offset, sampleRate, true); offset += 4;
+        view.setUint32(offset, byteRate, true); offset += 4;
+        view.setUint16(offset, blockAlign, true); offset += 2;
+        view.setUint16(offset, bitDepth, true); offset += 2;
+
+        // DATA chunk
+        writeString('data');
+        view.setUint32(offset, numBytes, true); offset += 4;
+
+        // Write PCM data
+        const pcmView = new Int16Array(buffer, offset);
+        pcmView.set(pcm16Data);
+
+        return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    // --- Game Object Classes ---
+
+    class Car {
+        constructor(x, y, w, h, color) {
+            this.x = x;
+            this.y = y;
+            this.width = w;
+            this.height = h;
+            this.color = color;
+            this.lane = 1; // 0, 1, 2
+        }
+
+        draw(ctx) {
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+
+            // Simple visual enhancement (windshield/lights)
+            if (this.color === '#f56565') { // Player Car (Red)
+                // Headlights (Yellow)
+                ctx.fillStyle = '#f6e05e';
+                ctx.fillRect(this.x + 2, this.y + this.height - 4, 4, 2);
+                ctx.fillRect(this.x + this.width - 6, this.y + this.height - 4, 4, 2);
+            } else { // Obstacle Car (Blue/Gray)
+                // Rearlights (Red)
+                ctx.fillStyle = '#e53e3e';
+                ctx.fillRect(this.x + 2, this.y + 2, 4, 2);
+                ctx.fillRect(this.x + this.width - 6, this.y + 2, 4, 2);
+            }
+        }
+
+        // Check for intersection with another car (bounding box collision)
+        collides(other) {
+            return this.x < other.x + other.width &&
+                   this.x + this.width > other.x &&
+                   this.y < other.y + other.height &&
+                   this.y + this.height > other.y;
+        }
+    }
+
+    class RoadLine {
+        constructor(y, h, color, laneCount) {
+            this.y = y;
+            this.height = h;
+            this.color = color;
+            this.laneCount = laneCount;
+            this.lineGap = canvas.width / (laneCount + 1);
+            this.lineWidth = 10;
+        }
+
+        draw(ctx) {
+            ctx.fillStyle = this.color;
+            // Draw all lane dividers
+            for (let i = 1; i < this.laneCount; i++) {
+                const xPos = i * this.lineGap;
+                ctx.fillRect(xPos - (this.lineWidth / 2), this.y, this.lineWidth, this.height);
+            }
+        }
+    }
+
+    // --- Game State Management ---
+
+    let playerCar;
+    let traffic = [];
+    let roadLines = [];
+    let lanes = []; // Calculated lane centers
+    let maxLane;
+    const CAR_WIDTH_RATIO = 0.15;
+    const CAR_HEIGHT_RATIO = 0.15;
+
+    function resizeCanvas() {
+        const gameContainer = document.getElementById('gameContainer');
+        canvas.width = gameContainer.clientWidth;
+        canvas.height = gameContainer.clientHeight;
+        initGameDimensions();
+    }
+
+    function initGameDimensions() {
+        // Calculate lane widths and center positions
+        maxLane = 2; // 0, 1, 2
+        lanes = [];
+        const laneWidth = canvas.width / (maxLane + 1);
+        for (let i = 0; i <= maxLane; i++) {
+            lanes.push(laneWidth * (i + 0.5));
+        }
+
+        const carWidth = canvas.width * CAR_WIDTH_RATIO;
+        const carHeight = canvas.height * CAR_HEIGHT_RATIO;
+
+        // Initialize Player Car at the center lane
+        if (!playerCar) {
+             playerCar = new Car(
+                lanes[1] - carWidth / 2, // Center of lane 1
+                canvas.height * 0.75, // Near the bottom
+                carWidth,
+                carHeight,
+                '#f56565' // Red
+            );
+        } else {
+            // Update position based on new dimensions
+            playerCar.width = carWidth;
+            playerCar.height = carHeight;
+            playerCar.x = lanes[playerCar.lane] - playerCar.width / 2;
+            playerCar.y = canvas.height * 0.75;
+        }
+
+        // Reset road lines
+        roadLines = [];
+        for (let i = -1; i < 15; i++) {
+            roadLines.push(new RoadLine(i * (canvas.height / 10), canvas.height / 20, '#f7fafc', maxLane + 1));
+        }
+
+        // Clear and reset traffic cars on resize (simplifies logic)
+        traffic = [];
+        messageBox.style.height = `${canvas.height}px`; // Adjust message box size
+    }
+
+    function initControls() {
+        let moveDirection = 0; // -1 for left, 1 for right, 0 for stop
+
+        // Movement function
+        function movePlayer() {
+            if (gameState !== 'PLAYING') return;
+
+            const newLane = playerCar.lane + moveDirection;
+
+            if (moveDirection !== 0 && newLane >= 0 && newLane <= maxLane) {
+                playerCar.lane = newLane;
+                // Instantly move car to the center of the new lane
+                playerCar.x = lanes[playerCar.lane] - playerCar.width / 2;
+            }
+        }
+
+        // Event handler setup
+        function handleButton(buttonId, direction) {
+            const button = document.getElementById(buttonId);
+
+            const startMove = (e) => {
+                e.preventDefault();
+                if (gameState === 'PLAYING') {
+                    moveDirection = direction;
+                    // Move immediately on press (only 1 step per press)
+                    movePlayer();
+                }
+            };
+
+            const endMove = (e) => {
+                e.preventDefault();
+                moveDirection = 0;
+            };
+
+            // Touch events
+            button.addEventListener('touchstart', startMove);
+            button.addEventListener('touchend', endMove);
+            button.addEventListener('touchcancel', endMove);
+
+            // Mouse events (for desktop testing)
+            button.addEventListener('mousedown', startMove);
+            button.addEventListener('mouseup', endMove);
+            button.addEventListener('mouseleave', endMove);
+        }
+
+        handleButton('leftButton', -1);
+        handleButton('rightButton', 1);
+    }
+
+    // --- Game Logic ---
+
+    let spawnTimer = 0;
+    const SPAWN_INTERVAL_BASE = 1.0; // seconds
+
+    function generateTraffic(deltaTime) {
+        spawnTimer -= deltaTime;
+
+        if (spawnTimer <= 0) {
+            // Calculate a random lane for the new car
+            let randomLane = Math.floor(Math.random() * (maxLane + 1));
+            let carWidth = playerCar.width;
+            let carHeight = playerCar.height;
+
+            // Simple check to ensure new car doesn't spawn directly on top of an existing one
+            const spawnY = -carHeight * 2;
+            const collisionOverlap = traffic.some(t =>
+                t.lane === randomLane && t.y < carHeight * 1.5
+            );
+
+            if (!collisionOverlap) {
+                const newCar = new Car(
+                    lanes[randomLane] - carWidth / 2,
+                    spawnY,
+                    carWidth,
+                    carHeight,
+                    '#4299e1' // Blue
+                );
+                newCar.lane = randomLane;
+                traffic.push(newCar);
+            }
+
+            // Reset the timer, making it faster as speed increases
+            const spawnRateFactor = currentSpeed / BASE_SPEED;
+            const dynamicInterval = SPAWN_INTERVAL_BASE / spawnRateFactor;
+            spawnTimer = Math.max(0.3, dynamicInterval); // Minimum interval of 0.3s
+        }
+    }
+
+    function update(time) {
+        if (gameState !== 'PLAYING') return;
+
+        deltaTime = (time - lastTime) / 1000; // Convert to seconds
+        lastTime = time;
+
+        // 1. Update Score and Speed
+        score += currentSpeed * SCORE_MULTIPLIER * deltaTime;
+        currentSpeed = Math.min(MAX_SPEED, BASE_SPEED + Math.floor(score / 50) * SPEED_INCREMENT);
+
+        scoreDisplay.textContent = `SCORE: ${Math.floor(score)}`;
+        speedDisplay.textContent = `SPEED: ${Math.floor(currentSpeed)} km/h`;
+
+        const roadMovement = currentSpeed * deltaTime;
+
+        // 2. Update Road Lines
+        roadLines.forEach(line => {
+            line.y += roadMovement;
+        });
+
+        // Loop road lines (infinite scrolling)
+        if (roadLines[roadLines.length - 1].y > canvas.height) {
+            // Find the top-most line and move it to the bottom
+            const lineToMove = roadLines.pop();
+            lineToMove.y = roadLines[0].y - lineToMove.height * (roadLines.length / 2);
+            roadLines.unshift(lineToMove);
+        }
+
+        // 3. Update Traffic
+        traffic.forEach(car => {
+            car.y += roadMovement; // Traffic moves at the same speed as the road
+        });
+
+        // 4. Remove off-screen traffic
+        traffic = traffic.filter(car => car.y < canvas.height);
+
+        // 5. Generate new traffic
+        generateTraffic(deltaTime);
+
+        // 6. Check Collisions
+        for (const car of traffic) {
+            if (playerCar.collides(car)) {
+                playGameOverSound(); // Play sound effect
+                endGame();
+                return;
+            }
+        }
+    }
+
+    function draw() {
+        // Clear the canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Road Base (Dark Gray/Green)
+        ctx.fillStyle = '#2d3748';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Road Lines
+        roadLines.forEach(line => line.draw(ctx));
+
+        // Draw Traffic
+        traffic.forEach(car => car.draw(ctx));
+
+        // Draw Player Car (Last, so it's always on top)
+        playerCar.draw(ctx);
+    }
+
+    function gameLoop(time) {
+        if (gameState === 'PLAYING') {
+            update(time);
+            draw();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+    }
+
+    function startGame() {
+        if (gameState === 'PLAYING') return;
+
+        // Reset state
+        gameState = 'PLAYING';
+        score = 0;
+        currentSpeed = BASE_SPEED;
+        traffic = [];
+        playerCar.lane = 1;
+        playerCar.x = lanes[1] - playerCar.width / 2; // Move player to center
+
+        messageBox.classList.add('hidden');
+        document.getElementById('controlPad').style.opacity = 1;
+        document.getElementById('controlPad').style.pointerEvents = 'all';
+
+        // Start the loop
+        lastTime = performance.now();
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function endGame() {
+        gameState = 'GAME_OVER';
+        cancelAnimationFrame(animationFrameId);
+
+        messageTitle.textContent = "GAME OVER!";
+        messageText.textContent = `You scored ${Math.floor(score)} points. Great job!`;
+        startButton.textContent = "PLAY AGAIN";
+        messageBox.classList.remove('hidden');
+
+        document.getElementById('controlPad').style.opacity = 0.5;
+        document.getElementById('controlPad').style.pointerEvents = 'none';
+    }
+
+    // --- Audio Integration (Tone.js Fallback) ---
+    // Use the Tone.js library for simple, internal sound effects
+    // Tone.js CDN is assumed to be loaded if needed, but for simplicity,
+    // let's use the standard Web Audio API and generate the audio using the Gemini API.
+
+    // A simple retry utility with exponential backoff for the API call
+    async function fetchWithRetry(url, options, maxRetries = 3) {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json();
+            } catch (error) {
+                console.warn(`Fetch attempt ${i + 1} failed: ${error.message}. Retrying...`);
+                if (i < maxRetries - 1) {
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } else {
+                    throw error;
+                }
+            }
+        }
+    }
+
+    let audioContext = null;
+    let gameOverSound = null;
+
+    async function generateAndCacheSound(prompt) {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const payload = {
+            contents: [{
+                parts: [{ text: prompt }]
+            }],
+            generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                    voiceConfig: {
+                        prebuiltVoiceConfig: { voiceName: "Fenrir" }
+                    }
+                }
+            },
+            model: "gemini-2.5-flash-preview-tts"
+        };
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+        try {
+            const result = await fetchWithRetry(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType;
+
+            if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000; // Default if not found
+
+                const pcmData = base64ToArrayBuffer(audioData);
+                const pcm16 = new Int16Array(pcmData);
+                const wavBlob = pcmToWav(pcm16, sampleRate);
+                const audioUrl = URL.createObjectURL(wavBlob);
+
+                const audio = new Audio(audioUrl);
+                return audio;
+
+            } else {
+                console.error("Failed to generate or retrieve audio data.");
+                return null;
+            }
+        } catch (e) {
+            console.error("API call failed for sound generation:", e);
+            return null;
+        }
+    }
+
+    async function loadSounds() {
+        console.log("Loading sounds...");
+        // Generate a quick, sharp "Game Over" sound effect
+        gameOverSound = await generateAndCacheSound("Say in a defeated and glitchy voice: Error, crash, game over.");
+    }
+
+    function playGameOverSound() {
+        if (gameOverSound) {
+            // Must load or play a sound on user interaction first for mobile audio to work
+            gameOverSound.play().catch(e => console.error("Audio play failed:", e));
+        } else {
+            console.log("Audio not loaded, cannot play.");
+        }
+    }
+
+    // --- Initialization ---
+    window.addEventListener('load', () => {
+        // 1. Initial setup and resizing
+        resizeCanvas();
+        initControls(); // Setup buttons
+
+        // 2. Start button event
+        startButton.addEventListener('click', () => {
+             // Must ensure audio context is resumed on user action for mobile compatibility
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            startGame();
+        });
+
+        // 3. Load audio asynchronously (will play only after user interaction)
+        loadSounds();
+
+        // 4. Initial draw of the start screen
+        draw();
+        messageBox.classList.remove('hidden');
+
+        // Optional: Debugging log for Firebase (if used, but not needed here)
+        // setLogLevel('Debug');
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // Initial call to set up dimensions and car position
+    initGameDimensions();
+
+</script>
+
+</body>
+</html>
