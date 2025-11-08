@@ -2,69 +2,67 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arcade Racer</title>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Drift Racer</title>
+    <!-- Tailwind CSS is included but custom styles are used for the game aesthetic -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Retro Arcade Styling */
+        /* Base Styling */
         body {
-            font-family: 'Press Start 2P', cursive;
-            background-color: #000033; /* Dark Blue/Space background */
-            color: #FF00FF; /* Magenta for contrast */
+            background-color: #1a1a2e; /* Deep purple background */
+            color: #00ffff; /* Neon cyan text */
+            font-family: 'Arial', sans-serif;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 10px;
             overflow: hidden;
-            user-select: none;
+            touch-action: none; /* Crucial for preventing mobile scrolling/zooming */
         }
 
-        /* Game Container - Ensures responsiveness and fixed aspect ratio */
+        /* Game Container - Fixed Aspect Ratio */
         #game-container {
-            width: 95vw; /* Start wide for mobile */
-            max-width: 400px; /* Max width for desktop */
-            aspect-ratio: 3 / 5; /* Fixed aspect ratio for arcade look (W:H) */
-            border: 4px solid #00FFFF; /* Cyan border */
-            box-shadow: 0 0 15px #00FFFF, 0 0 25px rgba(0, 255, 255, 0.5);
-            border-radius: 8px;
-            overflow: hidden;
-            background-color: #000; /* Black canvas background */
+            width: 100vw;
+            height: 100vh;
+            max-width: 500px; /* Maximize visibility on desktop while retaining mobile feel */
+            max-height: 900px;
             position: relative;
+            background-color: #000;
+            overflow: hidden;
+            border: 4px solid #ff007f; /* Neon pink border */
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.7);
         }
 
-        /* Canvas - Fill container */
+        /* Canvas */
         #game-canvas {
             display: block;
             width: 100%;
             height: 100%;
-            touch-action: none; /* Crucial: Prevents mobile browsers from scrolling/zooming */
         }
 
-        /* Info Display */
-        #info-bar {
+        /* UI Overlay */
+        #ui-overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
+            padding: 10px 15px;
             display: flex;
             justify-content: space-between;
-            padding: 8px;
-            background-color: rgba(0, 0, 0, 0.5);
-            font-size: 0.7rem;
-            text-shadow: 0 0 3px #00FFFF;
+            font-size: 1.2rem;
+            text-shadow: 0 0 5px #00ffff;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0));
         }
 
-        /* Game Over Overlay */
-        #game-over-overlay {
+        /* Game Over Screen */
+        #game-over {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
+            background-color: rgba(0, 0, 0, 0.95);
             display: none;
             flex-direction: column;
             justify-content: center;
@@ -73,56 +71,41 @@
             z-index: 10;
         }
 
-        #game-over-overlay.active {
+        #game-over.active {
             display: flex;
         }
 
-        #game-over-overlay h2 {
-            font-size: 1.5rem;
-            color: #FF0077;
-            text-shadow: 0 0 8px #FF0077;
-            margin-bottom: 10px;
-        }
-
-        #final-score-text {
-            font-size: 1.1rem;
-            color: #00FF77;
+        #game-over h2 {
+            font-size: 2.5rem;
+            color: #ff007f;
+            text-shadow: 0 0 15px #ff007f;
             margin-bottom: 20px;
         }
 
-        #restart-button {
-            padding: 8px 16px;
-            font-size: 0.9rem;
-            font-family: 'Press Start 2P', cursive;
-            color: #000000;
-            background-color: #00FFFF;
+        #final-score {
+            font-size: 1.8rem;
+            color: #00ffff;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        .action-button {
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            background-color: #00ffff;
+            color: #1a1a2e;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s ease;
-            box-shadow: 0 0 8px #00FFFF;
+            box-shadow: 0 0 10px #00ffff;
+            font-weight: bold;
         }
 
-        #restart-button:hover {
-            background-color: #FF0077;
-            box-shadow: 0 0 12px #FF0077;
-        }
-
-        /* Mobile Controls Overlay - Invisible touch zones */
-        #mobile-controls {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 40%; /* Only use bottom part for touch area */
-            z-index: 5; /* Below game over, above canvas */
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .control-area {
-            width: 50%;
-            height: 100%;
+        .action-button:hover {
+            background-color: #ff007f;
+            color: #fff;
+            box-shadow: 0 0 15px #ff007f;
         }
     </style>
 </head>
@@ -130,376 +113,389 @@
 
     <div id="game-container">
         <!-- Game Over Overlay -->
-        <div id="game-over-overlay">
+        <div id="game-over">
             <h2>CRASHED!</h2>
-            <p id="final-score-text">Distance: 0m</p>
-            <button id="restart-button">RETRY</button>
+            <div id="final-score">SCORE: 0</div>
+            <button id="restart-button" class="action-button">RACE AGAIN</button>
         </div>
 
-        <div id="info-bar">
-            <span id="score">DISTANCE: 0m</span>
-            <span id="speed">SPEED: 0 MPH</span>
+        <!-- Score and Speed UI -->
+        <div id="ui-overlay">
+            <span id="score">SCORE: 0</span>
+            <span id="speed">SPEED: 0.0</span>
         </div>
 
         <canvas id="game-canvas"></canvas>
-
-        <!-- Invisible Mobile Touch Controls -->
-        <div id="mobile-controls">
-            <div id="left-control" class="control-area"></div>
-            <div id="right-control" class="control-area"></div>
-        </div>
     </div>
 
     <script>
-        // --- CONSTANTS AND SETUP ---
+        // --- CORE SETUP ---
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('game-container');
         const scoreDisplay = document.getElementById('score');
         const speedDisplay = document.getElementById('speed');
-        const gameOverOverlay = document.getElementById('game-over-overlay');
-        const finalScoreText = document.getElementById('final-score-text');
+        const gameOverOverlay = document.getElementById('game-over');
+        const finalScoreText = document.getElementById('final-score');
         const restartButton = document.getElementById('restart-button');
-        const leftControl = document.getElementById('left-control');
-        const rightControl = document.getElementById('right-control');
 
-        // Base dimensions for fixed game logic
-        const BASE_WIDTH = 300;
-        const BASE_HEIGHT = 500;
-        
-        let GAME_WIDTH = BASE_WIDTH;
-        let GAME_HEIGHT = BASE_HEIGHT;
-        let scaleFactor = 1;
-
+        // Game State
         let gameRunning = false;
         let animationFrameId;
 
-        // Game state variables (scaled at initialization)
-        let roadLineY = 0;
+        // Game Variables
         let score = 0;
-        let speed = 0;
-        let obstacleSpawnTimer = 0;
+        let baseSpeed = 5; // Initial downward speed (pixels per frame)
+        let currentSpeed = baseSpeed;
+        let speedMultiplier = 0.005; // How much speed increases per frame
+        let obstacles = [];
+        let lastObstacleTime = 0;
+        let spawnInterval = 60; // Frames between spawning new obstacles
 
-        // Configuration based on scaleFactor (set in resetGame)
-        let PLAYER_CAR_WIDTH;
-        let PLAYER_CAR_HEIGHT;
-        let PLAYER_SPEED;
-        let LANE_WIDTH;
-        let MAX_SPEED = 10;
-        let ACCELERATION = 0.05;
-        let DRAG = 0.01;
-        let OBSTACLE_BASE_SPEED;
+        // Canvas Dimensions (Set in resizeCanvas)
+        let GAME_WIDTH, GAME_HEIGHT;
+
+        // Player Car Object
+        const player = {
+            width: 40, 
+            height: 70,
+            x: 0,
+            y: 0, // Fixed Y position
+            lane: 1, // 0=Left, 1=Center, 2=Right
+            color: '#FF007F', // Neon Pink
+        };
+
+        // Road Configuration (3 Lanes)
+        const LANE_COUNT = 3;
+        let laneWidth;
 
         // --- GAME OBJECTS ---
 
-        class Car {
-            constructor(isPlayer = false, lane = 1) {
-                this.isPlayer = isPlayer;
-                // Dimensions initialized in resetGame/resizeCanvas
-                this.width = 0; 
-                this.height = 0;
-                this.lane = lane; // 0, 1, or 2 (Left, Center, Right)
-                this.color = isPlayer ? '#00FF00' : (Math.random() > 0.5 ? '#FF0077' : '#FFFF00');
-                
-                // Position set dynamically
-                this.x = 0;
-                this.y = 0; 
+        class Obstacle {
+            constructor(lane) {
+                this.width = player.width * 1.1; // Slightly larger than player to feel imposing
+                this.height = player.height * 1.1;
+                this.lane = lane;
+                // Calculate starting X position based on lane
+                this.x = this.getLaneCenter(lane) - this.width / 2;
+                this.y = -this.height; // Start above the screen
+                this.color = ['#FFFF00', '#00FFFF', '#00FF00'][Math.floor(Math.random() * 3)]; // Yellow, Cyan, Green
             }
 
-            getLaneX(lane) {
-                const centerOffset = GAME_WIDTH / 2;
-                const halfCar = this.width / 2;
-                // LANE_WIDTH is calculated in resetGame
-                
-                // These offsets rely on LANE_WIDTH being accurately calculated based on current scale
-                if (lane === 0) return centerOffset - LANE_WIDTH - halfCar; // Left
-                if (lane === 1) return centerOffset - halfCar; // Center
-                if (lane === 2) return centerOffset + LANE_WIDTH - halfCar; // Right
-                return centerOffset - halfCar; // Default to center
+            getLaneCenter(l) {
+                return (l + 0.5) * laneWidth;
             }
 
             draw() {
+                const w = this.width;
+                const h = this.height;
+                const x = this.x;
+                const y = this.y;
+
+                // 1. Main Body (Obstacle Color) - Slightly boxier/truck-like shape
                 ctx.fillStyle = this.color;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-                
-                // Simple window detail (scaled)
-                ctx.fillStyle = '#000000';
-                const windowHeight = this.height * 0.3;
-                const windowY = this.y + this.height * 0.2;
-                const windowX = this.x + this.width * 0.1;
-                const windowWidth = this.width * 0.8;
-                ctx.fillRect(windowX, windowY, windowWidth, windowHeight);
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.1, y);         // Top-left
+                ctx.lineTo(x + w * 0.9, y);         // Top-right
+                ctx.lineTo(x + w * 0.95, y + h);    // Bottom-right (wider base)
+                ctx.lineTo(x + w * 0.05, y + h);    // Bottom-left (wider base)
+                ctx.closePath();
+                ctx.fill();
+
+                // 2. Window/Cabin (Dark Grey)
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.2, y + h * 0.2);
+                ctx.lineTo(x + w * 0.8, y + h * 0.2);
+                ctx.lineTo(x + w * 0.85, y + h * 0.4);
+                ctx.lineTo(x + w * 0.15, y + h * 0.4);
+                ctx.closePath();
+                ctx.fill();
+
+                // 3. Headlights (White/Yellow)
+                ctx.fillStyle = '#FFFFAA';
+                const lightSize = w * 0.1;
+                ctx.fillRect(x + lightSize * 0.5, y + h * 0.9, lightSize, lightSize * 0.5);
+                ctx.fillRect(x + w - lightSize * 1.5, y + h * 0.9, lightSize, lightSize * 0.5);
             }
 
-            update(speed) {
-                if (!this.isPlayer) {
-                    // Obstacle movement relative to player speed
-                    this.y += (OBSTACLE_BASE_SPEED + speed / 5) * scaleFactor;
-                }
-            }
-
-            move(direction) {
-                // Direction: -1 (Left), 1 (Right)
-                let newLane = this.lane + direction;
-                newLane = Math.max(0, Math.min(2, newLane));
-                if (newLane !== this.lane) {
-                    this.lane = newLane;
-                    this.x = this.getLaneX(this.lane);
-                }
+            update() {
+                this.y += currentSpeed;
             }
         }
-
-        const playerCar = new Car(true, 1);
-        let obstacles = [];
-
-        // Method to update car dimensions and position when the screen size changes
-        playerCar.resetPosition = function() {
-            this.width = PLAYER_CAR_WIDTH;
-            this.height = PLAYER_CAR_HEIGHT;
-            this.x = this.getLaneX(this.lane);
-            this.y = GAME_HEIGHT - this.height * 1.5;
-        }
-
 
         // --- DRAWING FUNCTIONS ---
 
         function drawRoad() {
-            // Road Surface (Dark Gray)
-            ctx.fillStyle = '#111111';
+            // Draw background road color (dark grey)
+            ctx.fillStyle = '#2d2d3a';
             ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-            // Road Shoulders (Green)
-            const shoulderWidth = 40 * scaleFactor;
-            ctx.fillStyle = '#00AA00';
-            ctx.fillRect(0, 0, shoulderWidth, GAME_HEIGHT);
-            ctx.fillRect(GAME_WIDTH - shoulderWidth, 0, shoulderWidth, GAME_HEIGHT);
+            // Draw lane dividers (neon lines)
+            ctx.strokeStyle = '#FFFFFF'; // White lines
+            ctx.lineWidth = 5;
+            const lineDash = [15, 30]; // Dashed line pattern
             
-            // Road Lines (White Dashed)
-            const lineWidth = 4 * scaleFactor;
-            const dashLength = 20 * scaleFactor;
-            const gapLength = 20 * scaleFactor;
-            const lineX1 = (GAME_WIDTH / 3);
-            const lineX2 = (GAME_WIDTH * 2 / 3);
+            // Draw 2 dividing lines for 3 lanes
+            for (let i = 1; i < LANE_COUNT; i++) {
+                const lineX = i * laneWidth;
+                
+                // Animate dash pattern to simulate movement
+                const dashOffset = (score * 0.1) % (lineDash[0] + lineDash[1]);
+                ctx.setLineDash(lineDash);
+                ctx.lineDashOffset = -dashOffset;
 
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = lineWidth;
-            ctx.setLineDash([dashLength, gapLength]);
+                ctx.beginPath();
+                ctx.moveTo(lineX, 0);
+                ctx.lineTo(lineX, GAME_HEIGHT);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]); // Reset dash pattern
+        }
 
-            // Scroll the lines down
-            roadLineY = (roadLineY + speed * 1.5 * scaleFactor) % (dashLength + gapLength);
+        function drawPlayer() {
+            // Recalculate player X based on current lane
+            const targetX = (player.lane + 0.5) * laneWidth - player.width / 2;
+            
+            // Smoother movement: Interpolate player position towards the target lane center
+            // Interpolation factor increased from 0.3 to 0.5 for faster, snappier lane changes
+            player.x += (targetX - player.x) * 0.5; 
 
-            ctx.lineDashOffset = -roadLineY;
-
-            // Draw center lane dividers (two lines)
+            const w = player.width;
+            const h = player.height;
+            const x = player.x;
+            const y = player.y;
+            
+            // 1. Main Body (Neon Pink) - Sporty trapezoid shape
+            ctx.fillStyle = player.color;
             ctx.beginPath();
-            ctx.moveTo(lineX1, 0);
-            ctx.lineTo(lineX1, GAME_HEIGHT);
-            ctx.moveTo(lineX2, 0);
-            ctx.lineTo(lineX2, GAME_HEIGHT);
-            ctx.stroke();
+            ctx.moveTo(x + w * 0.1, y);         // Top-left (slimmer front)
+            ctx.lineTo(x + w * 0.9, y);         // Top-right (slimmer front)
+            ctx.lineTo(x + w, y + h);           // Bottom-right
+            ctx.lineTo(x, y + h);               // Bottom-left
+            ctx.closePath();
+            ctx.fill();
 
-            ctx.setLineDash([]); // Reset dashed lines
-            ctx.lineDashOffset = 0; // Reset offset
+            // 2. Cockpit/Window (Cyan)
+            ctx.fillStyle = '#00FFFF'; // Neon Cyan
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.25, y + h * 0.2);
+            ctx.lineTo(x + w * 0.75, y + h * 0.2);
+            ctx.lineTo(x + w * 0.85, y + h * 0.5);
+            ctx.lineTo(x + w * 0.15, y + h * 0.5);
+            ctx.closePath();
+            ctx.fill();
+
+            // 3. Tail/Engine Glow (Brighter Pink)
+            ctx.fillStyle = '#FF44AA';
+            ctx.fillRect(x + w * 0.1, y + h * 0.9, w * 0.8, h * 0.1);
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            drawRoad();
+            drawPlayer();
+            obstacles.forEach(o => o.draw());
         }
 
         // --- GAME LOGIC ---
 
-        function spawnObstacle() {
-            obstacleSpawnTimer += speed / MAX_SPEED;
-            const SPAWN_FREQUENCY = 150; // Controls how often an obstacle *might* spawn
-
-            if (obstacleSpawnTimer > SPAWN_FREQUENCY) {
-                const lane = Math.floor(Math.random() * 3);
-                obstacles.push(new Car(false, lane));
-                obstacleSpawnTimer = 0;
-            }
-        }
-
-        function checkCollision() {
-            // Player car bounding box
-            const P = playerCar;
-
-            for (let i = 0; i < obstacles.length; i++) {
-                const O = obstacles[i];
-                
-                // AABB Collision Detection
-                if (P.x < O.x + O.width &&
-                    P.x + P.width > O.x &&
-                    P.y < O.y + O.height &&
-                    P.y + P.height > O.y) {
-                    
-                    // Collision detected!
-                    endGame();
-                    return true;
-                }
-            }
-            return false;
-        }
-
         function updateGame() {
-            // 1. Update Speed
-            if (speed < MAX_SPEED) {
-                speed += ACCELERATION;
-            }
-            if (speed > MAX_SPEED) { // Apply a little drag if max speed is somehow exceeded
-                speed -= DRAG;
-            }
+            // 1. Increase Speed and Score
+            currentSpeed += speedMultiplier;
+            score += Math.round(currentSpeed * 0.1);
             
-            // 2. Update Score (Distance)
-            score += speed * 0.1;
-
-            // 3. Spawn obstacles
-            spawnObstacle();
-
-            // 4. Update Obstacles
-            obstacles.forEach(o => o.update(speed));
+            // 2. Obstacle Spawning
+            lastObstacleTime++;
             
-            // Filter obstacles that are off-screen and update their array
+            // Calculate dynamic spawn interval (faster speed = faster spawning)
+            const dynamicSpawnInterval = Math.max(25, 60 - Math.floor(currentSpeed * 3)); 
+
+            if (lastObstacleTime > dynamicSpawnInterval) {
+                // Randomly select a lane
+                let lane = Math.floor(Math.random() * LANE_COUNT);
+                obstacles.push(new Obstacle(lane));
+                lastObstacleTime = 0;
+            }
+
+            // 3. Update Obstacles and check for removal
+            obstacles.forEach(o => o.update());
             obstacles = obstacles.filter(o => o.y < GAME_HEIGHT);
 
-            // 5. Check Collisions
-            if (checkCollision()) return; // Stop update if collision occurred
-
-            // 6. Update UI
-            scoreDisplay.textContent = `DISTANCE: ${Math.floor(score)}m`;
-            speedDisplay.textContent = `SPEED: ${Math.floor(speed * 10)} MPH`; // Scale speed up for visual effect
+            // 4. Collision Detection
+            checkCollisions();
+            
+            // 5. Update UI
+            updateUI();
         }
 
-        // --- STATE MANAGEMENT ---
+        function checkCollisions() {
+            const px1 = player.x;
+            const py1 = player.y;
+            const px2 = player.x + player.width;
+            const py2 = player.y + player.height;
 
-        function resetGame() {
-            // Recalculate scaled constants
-            PLAYER_CAR_WIDTH = 30 * scaleFactor;
-            PLAYER_CAR_HEIGHT = 50 * scaleFactor;
-            PLAYER_SPEED = 5 * scaleFactor;
-            // The 80*scaleFactor accounts for the shoulders on both sides
-            LANE_WIDTH = (GAME_WIDTH - 80 * scaleFactor) / 3; 
-            OBSTACLE_BASE_SPEED = 2 * scaleFactor; // Base speed of traffic
+            for (const o of obstacles) {
+                const ox1 = o.x;
+                const oy1 = o.y;
+                const ox2 = o.x + o.width;
+                const oy2 = o.y + o.height;
 
-            // Reset game variables
-            score = 0;
-            speed = 0;
-            roadLineY = 0;
-            obstacleSpawnTimer = 0;
-            obstacles = [];
-            
-            // Reset player car position and scale
-            playerCar.resetPosition(); 
-
-            // Update UI
-            scoreDisplay.textContent = `DISTANCE: 0m`;
-            speedDisplay.textContent = `SPEED: 0 MPH`;
+                // Simple AABB collision check
+                if (px1 < ox2 && px2 > ox1 && py1 < oy2 && py2 > oy1) {
+                    endGame();
+                    return;
+                }
+            }
         }
         
+        // --- GAME FLOW ---
+
         function gameLoop() {
             if (!gameRunning) return;
 
-            // 1. Clear Canvas and Draw Road
-            drawRoad();
-
-            // 2. Update Game State
+            // 1. Update Game State
             updateGame();
 
-            // 3. Draw Player Car
-            playerCar.draw();
+            // 2. Draw Frame
+            drawGame();
 
-            // 4. Draw Obstacles
-            obstacles.forEach(o => o.draw());
-
-            // 5. Loop
+            // 3. Loop
             animationFrameId = requestAnimationFrame(gameLoop);
         }
 
         function startGame() {
-            // Ensure scaling is set up before starting
+            // Ensure correct sizing and game reset before starting
             resizeCanvas(); 
             resetGame();
             
             gameRunning = true;
             gameOverOverlay.classList.remove('active');
-            animationFrameId = requestAnimationFrame(gameLoop);
+            gameLoop();
         }
 
         function endGame() {
             gameRunning = false;
             cancelAnimationFrame(animationFrameId);
-            finalScoreText.textContent = `Distance: ${Math.floor(score)}m`;
+            
+            finalScoreText.textContent = `FINAL SCORE: ${score}`;
             gameOverOverlay.classList.add('active');
         }
 
+        function resetGame() {
+            score = 0;
+            currentSpeed = baseSpeed;
+            obstacles = [];
+            lastObstacleTime = 0;
+            player.lane = 1;
+            updateUI();
+        }
+
+        function updateUI() {
+            scoreDisplay.textContent = `SCORE: ${score}`;
+            speedDisplay.textContent = `SPEED: ${(currentSpeed).toFixed(1)}`;
+        }
+
+        // --- RESPONSIVENESS & RESIZING ---
+
         function resizeCanvas() {
-            // Get the actual rendered width of the container
-            const containerWidth = container.clientWidth; 
-            const containerHeight = container.clientHeight;
+            // Set canvas size to match container size
+            GAME_WIDTH = container.clientWidth;
+            GAME_HEIGHT = container.clientHeight;
 
-            // Update global game dimensions and scale factor
-            GAME_WIDTH = containerWidth;
-            GAME_HEIGHT = containerHeight;
-            scaleFactor = GAME_WIDTH / BASE_WIDTH; // Scaling based on width
-
-            // Apply dimensions to the canvas element
             canvas.width = GAME_WIDTH;
             canvas.height = GAME_HEIGHT;
 
-            // Recalculate and reset game properties with new scale
-            resetGame();
-        }
+            // Calculate Lane width based on new canvas size
+            laneWidth = GAME_WIDTH / LANE_COUNT;
 
-        // --- INPUT HANDLING ---
+            // Adjust player dimensions and fixed position (using a ratio for responsiveness)
+            // Changed from GAME_WIDTH / 9 to GAME_WIDTH / 12 to make the car narrower
+            player.width = Math.max(30, GAME_WIDTH / 12); 
+            player.height = Math.max(60, GAME_HEIGHT / 6);
+            
+            // Recalculate obstacle size based on the new smaller player size
+            obstacles.forEach(o => {
+                o.width = player.width * 1.1;
+                o.height = player.height * 1.1;
+                // Recenter obstacle X to the new lane center
+                o.x = o.getLaneCenter(o.lane) - o.width / 2;
+            });
 
-        let moveIntent = 0; // -1 for left, 1 for right, 0 for none
-
-        function handleInput(direction) {
-            // Prevents immediate lane change spamming by checking against the previous intent.
-            if (direction !== moveIntent) {
-                playerCar.move(direction);
-                moveIntent = direction;
-            }
-        }
-
-        // Handles Keyboard Input (for desktop)
-        function handleKey(e) {
-            if (e.type === 'keydown') {
-                if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
-                    e.preventDefault();
-                    handleInput(-1);
-                } else if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
-                    e.preventDefault();
-                    handleInput(1);
-                }
-            } else if (e.type === 'keyup') {
-                if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a' ||
-                    e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
-                    moveIntent = 0;
-                }
+            player.y = GAME_HEIGHT - player.height * 1.5;
+            
+            // Re-center player in the starting lane
+            player.x = (player.lane + 0.5) * laneWidth - player.width / 2;
+            
+            // Redraw to adjust road lines instantly
+            if (gameRunning) {
+                drawGame();
             }
         }
         
-        // Handles Touch End (Crucial for mobile responsiveness)
-        function handleTouchEnd() {
-            moveIntent = 0;
+        // --- INPUT HANDLER (MOBILE & DESKTOP) ---
+        
+        let isTouching = false;
+        let startX = 0;
+
+        function getClientX(e) {
+            return e.touches ? e.touches[0].clientX : e.clientX;
         }
 
+        function handleInputStart(e) {
+            e.preventDefault();
+            if (!gameRunning) return;
+
+            isTouching = true;
+            startX = getClientX(e);
+            handleInputMove(e); // Allow instant movement on tap
+        }
+
+        function handleInputMove(e) {
+            e.preventDefault();
+            if (!isTouching || !gameRunning) return;
+
+            const clientX = getClientX(e);
+            
+            // Convert touch/mouse X position to a lane index
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = clientX - rect.left;
+            
+            // Determine the intended lane based on X position
+            let intendedLane = Math.floor(canvasX / laneWidth);
+            
+            // Clamp lane index to bounds [0, 2]
+            player.lane = Math.min(LANE_COUNT - 1, Math.max(0, intendedLane));
+        }
+
+        function handleInputEnd(e) {
+            e.preventDefault();
+            isTouching = false;
+        }
 
         // --- EVENT LISTENERS ---
-        
-        window.addEventListener('load', startGame);
+
+        window.addEventListener('load', () => {
+             // Initial setup call
+            resizeCanvas();
+            startGame();
+        });
         window.addEventListener('resize', resizeCanvas); 
 
-        document.addEventListener('keydown', handleKey);
-        document.addEventListener('keyup', handleKey);
+        // Touch Listeners for Mobile Control
+        canvas.addEventListener('touchstart', handleInputStart, { passive: false });
+        canvas.addEventListener('touchmove', handleInputMove, { passive: false });
+        canvas.addEventListener('touchend', handleInputEnd, { passive: false });
+        canvas.addEventListener('touchcancel', handleInputEnd, { passive: false });
+        
+        // Mouse Listeners for Desktop Control
+        canvas.addEventListener('mousedown', handleInputStart, { passive: false });
+        canvas.addEventListener('mousemove', handleInputMove, { passive: false });
+        canvas.addEventListener('mouseup', handleInputEnd, { passive: false });
+        canvas.addEventListener('mouseleave', handleInputEnd, { passive: false });
 
         restartButton.addEventListener('click', startGame);
-
-        // Mobile touch controls listeners: Use the invisible control areas
-        leftControl.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(-1); }, false);
-        leftControl.addEventListener('touchend', handleTouchEnd, false);
-        rightControl.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(1); }, false);
-        rightControl.addEventListener('touchend', handleTouchEnd, false);
-        
-        // Stops movement if the finger slides off the control area
-        leftControl.addEventListener('touchcancel', handleTouchEnd, false);
-        rightControl.addEventListener('touchcancel', handleTouchEnd, false);
 
     </script>
 </body>
