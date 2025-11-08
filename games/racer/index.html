@@ -99,6 +99,7 @@
             text-align: center;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
             border: 4px solid #f6e05e; /* Yellow border */
+            pointer-events: all; /* ADDED: Ensures the button inside is clickable */
         }
 
         .start-button {
@@ -549,9 +550,6 @@
     }
 
     // --- Audio Integration (Tone.js Fallback) ---
-    // Use the Tone.js library for simple, internal sound effects
-    // Tone.js CDN is assumed to be loaded if needed, but for simplicity,
-    // let's use the standard Web Audio API and generate the audio using the Gemini API.
 
     // A simple retry utility with exponential backoff for the API call
     async function fetchWithRetry(url, options, maxRetries = 3) {
