@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paw Patrol Memory Game - Image Match</title>
+    <title>Paw Patrol Memory Game - Image Match (Audio)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom styles for the Paw Patrol theme */
@@ -128,7 +128,7 @@
 
     <div class="w-full max-w-2xl bg-white p-6 rounded-3xl shadow-2xl">
         <h1 class="text-4xl font-bold text-center text-[#e83e58] mb-2 uppercase tracking-wider">
-            Pup Picture Match!
+            Pup Picture Match! (With Sound!)
         </h1>
         <p class="text-center text-gray-600 mb-6">Match the 8 pups in this 4x4 grid!</p>
 
@@ -160,20 +160,23 @@
         // --- GAME LOGIC ---
 
         const IMAGE_BASE_URL = "https://irmcintosh.github.io/games/paw-patrol/images/";
+        const TTS_API_MODEL = "gemini-2.5-flash-preview-tts";
+        const API_KEY = ""; // Kept empty for Canvas environment
 
         // Map character name (key) to their catchphrase (value)
         const CATCHPHRASES = {
             'ryder': "PAW Patrol is on a roll!",
             'chase': "Chase is on the case!",
-            'marshall': "Ready for a ruff-ruff-resuce!",
+            'marshall': "Ready for a ruff-ruff-rescue!",
             'sky': "Let's take to the sky!",
             'rocky': "Don't lose it, reuse it!",
             'rubble': "Rubble on the double!",
-            'everest': "Ice or snow, I'm ready to go!", // Included even if not currently in the deck
+            'everest': "Ice or snow, I'm ready to go!", 
             'liberty': "Liberty's ready to roll!",
+            'zuma': "Ready, set, get wet!", // Adding Zuma's catchphrase
         };
 
-        // Array of 8 characters for a 4x4 grid (16 cards): Chase, Liberty, Marshall, Rocky, Rubble, Skye, Zuma, and Ryder.
+        // Array of 8 characters for a 4x4 grid (16 cards)
         const pawPatrolPups = [
             { id: 1, name: 'chase' },
             { id: 2, name: 'liberty' },
@@ -182,7 +185,7 @@
             { id: 5, name: 'rubble' },
             { id: 6, name: 'sky' },
             { id: 7, name: 'zuma' },
-            { id: 8, name: 'ryder' }, // Using Ryder as the eighth character.
+            { id: 8, name: 'ryder' },
         ];
 
         const gameBoard = document.getElementById('game-board');
@@ -197,6 +200,150 @@
         let moves = 0;
         let gameLocked = false;
         const totalMatches = pawPatrolPups.length; // 8 pairs
+        let messageTimeoutId = null;
+
+
+        // --- UTILITY FUNCTIONS FOR TTS AUDIO PROCESSING ---
+
+        // Converts Base64 string to ArrayBuffer (for PCM data)
+        function base64ToArrayBuffer(base64) {
+            const binary_string = window.atob(base64);
+            const len = binary_string.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary_string.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // Converts raw PCM data to a standard WAV audio file (Blob)
+        function pcmToWav(pcm16, sampleRate, mimeType) {
+            const buffer = new ArrayBuffer(44 + pcm16.length * 2);
+            const view = new DataView(buffer);
+            
+            // RIFF chunk descriptor
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcm16.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            
+            // FMT sub-chunk
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // PCM format
+            view.setUint16(22, 1, true); // Mono
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true); // Byte rate (SampleRate * 1 * 2)
+            view.setUint16(32, 2, true); // Block align (1 channel * 2 bytes/sample)
+            view.setUint16(34, 16, true); // Bits per sample
+            
+            // DATA sub-chunk
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcm16.length * 2, true);
+            
+            // Write the PCM data
+            let offset = 44;
+            for (let i = 0; i < pcm16.length; i++) {
+                view.setInt16(offset, pcm16[i], true);
+                offset += 2;
+            }
+
+            return new Blob([view], { type: mimeType.split(';')[0].replace('L16', 'wav') });
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        function playAudio(audioBlob, onEndedCallback) {
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            audio.onended = () => {
+                URL.revokeObjectURL(audioUrl);
+                if (onEndedCallback) onEndedCallback();
+            };
+            audio.play().catch(e => console.error("Audio playback failed:", e));
+        }
+
+        // --- TTS API CALLER ---
+
+        async function speakCatchphrase(text, onAudioEnded) {
+            // Lock the game while generating and playing sound
+            gameLocked = true;
+            displayMessage(`...Generating sound for: "${text}"`, 99999); 
+            
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${TTS_API_MODEL}:generateContent?key=${API_KEY}`;
+            const payload = {
+                contents: [{
+                    parts: [{ text: text }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: "Kore" } // A firm, clear voice
+                        }
+                    }
+                },
+                model: TTS_API_MODEL
+            };
+
+            const maxRetries = 5;
+            let currentRetry = 0;
+
+            const executeFetch = async () => {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API returned status ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const part = result?.candidates?.[0]?.content?.parts?.[0];
+                    const audioData = part?.inlineData?.data;
+                    const mimeType = part?.inlineData?.mimeType;
+
+                    if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
+                        // Extract sample rate from mimeType, e.g., audio/L16;rate=24000
+                        const rateMatch = mimeType.match(/rate=(\d+)/);
+                        const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+                        
+                        const pcmData = base64ToArrayBuffer(audioData);
+                        // PCM data is signed 16-bit
+                        const pcm16 = new Int16Array(pcmData);
+                        
+                        const wavBlob = pcmToWav(pcm16, sampleRate, mimeType);
+
+                        // Play the audio and call the callback when done
+                        playAudio(wavBlob, onAudioEnded);
+                    } else {
+                        throw new Error("Invalid audio response structure or data format.");
+                    }
+                } catch (error) {
+                    currentRetry++;
+                    if (currentRetry < maxRetries) {
+                        const delay = Math.pow(2, currentRetry) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        return executeFetch(); // Retry
+                    } else {
+                        console.error("TTS failed after multiple retries:", error);
+                        // Fallback: just display the message and unlock
+                        displayMessage(text, 1800);
+                        onAudioEnded(); 
+                    }
+                }
+            };
+
+            await executeFetch();
+        }
+
+        // --- GAME CONTROL FUNCTIONS ---
 
         // Utility function to shuffle an array
         function shuffle(array) {
@@ -227,7 +374,6 @@
         function getImageUrl(pupName) {
             // Constructs the full URL for the image
             const url = `${IMAGE_BASE_URL}${pupName}.jpg`;
-            // If the image fails to load, the browser should show a broken image icon.
             return url;
         }
 
@@ -235,7 +381,10 @@
             gameBoard.innerHTML = '';
             deck.forEach(card => {
                 const cardElement = document.createElement('div');
-                cardElement.className = `card ${card.isFlipped ? 'flipped' : ''} ${card.isMatched ? 'matched' : ''}`;
+                // Disable click events if game is locked or card is matched
+                const isClickable = !gameLocked && !card.isMatched;
+
+                cardElement.className = `card ${card.isFlipped ? 'flipped' : ''} ${card.isMatched ? 'matched' : ''} ${isClickable ? '' : 'pointer-events-none'}`;
                 cardElement.dataset.uniqueId = card.uniqueId;
 
                 const pupImageUrl = getImageUrl(card.name);
@@ -252,7 +401,7 @@
                 `;
 
                 // Attach click event only if not matched
-                if (!card.isMatched) {
+                if (isClickable) {
                     cardElement.addEventListener('click', () => handleCardClick(card.uniqueId));
                 }
 
@@ -260,19 +409,27 @@
             });
         }
         
-        // Updated showMessage function to display the character's catchphrase
-        function showMessage(text, duration = 1500) {
+        // Displays a message in the message box
+        function displayMessage(text, duration = 1500) {
+            // Clear any existing timeout
+            if (messageTimeoutId) {
+                clearTimeout(messageTimeoutId);
+            }
+
             gameMessageElement.textContent = text;
             gameMessageElement.classList.add('animate-pulse');
-            setTimeout(() => {
-                gameMessageElement.textContent = '';
-                gameMessageElement.classList.remove('animate-pulse');
-            }, duration);
+
+            if (duration !== 99999) { // 99999 is used for persistent messages (like loading)
+                messageTimeoutId = setTimeout(() => {
+                    gameMessageElement.textContent = '';
+                    gameMessageElement.classList.remove('animate-pulse');
+                    messageTimeoutId = null;
+                }, duration);
+            }
         }
 
         function checkMatch() {
             const [cardA, cardB] = flippedCards;
-            gameLocked = true;
             moves++;
             updateDisplay();
 
@@ -282,34 +439,51 @@
                 cardA.isMatched = true;
                 cardB.isMatched = true;
                 
-                // Get the catchphrase for the matched character
+                // Get the catchphrase
                 const characterName = cardA.name;
-                const matchMessage = CATCHPHRASES[characterName] || "SUCCESS!"; // Fallback to "SUCCESS!"
+                const matchMessage = CATCHPHRASES[characterName] || "SUCCESS!";
                 
-                // Display the catchphrase
-                showMessage(matchMessage, 1800);
-
-                setTimeout(() => {
+                // Callback function to run after audio finishes playing
+                const onAudioEnded = () => {
                     renderBoard(); // Re-render to apply the 'matched' styles
                     flippedCards = [];
-                    gameLocked = false;
+                    gameLocked = false; // Unlock game
+                    renderBoard(); // Re-render to update clickability
                     
                     if (matches === totalMatches) {
-                        // Game Over
-                        showMessage("No job is too big, no pup is too small! Game Complete!", 5000);
+                        displayMessage("No job is too big, no pup is too small! Game Complete!", 5000);
                         gameLocked = true;
+                    } else {
+                        displayMessage(""); // Clear message after success
                     }
+                };
+
+                // Speak the catchphrase (this is async and handles gameLocked logic)
+                speakCatchphrase(matchMessage, onAudioEnded);
+
+                // Wait for sound to play before clearing the match
+                setTimeout(() => {
+                    // Visually update cards to "matched" state quickly, but delay UNLOCK
+                    // until after the speech finishes (handled in onAudioEnded)
+                    renderBoard(); 
                 }, 600);
+
             } else {
                 // No Match
+                // Lock game briefly to prevent quick third click
+                gameLocked = true;
+                renderBoard(); 
+                displayMessage("Try again, pups!", 1000);
+
                 setTimeout(() => {
                     // Flip cards back
                     cardA.isFlipped = false;
                     cardB.isFlipped = false;
                     renderBoard();
                     flippedCards = [];
-                    gameLocked = false;
-                }, 1000);
+                    gameLocked = false; // Unlock game
+                    renderBoard(); // Re-render to update clickability
+                }, 1200);
             }
         }
 
@@ -335,7 +509,7 @@
             matches = 0;
             moves = 0;
             gameLocked = false;
-            gameMessageElement.textContent = '';
+            displayMessage('Click a card to start!', 3000);
 
             createDeck();
             renderBoard();
