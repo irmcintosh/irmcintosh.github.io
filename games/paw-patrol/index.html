@@ -162,16 +162,18 @@
         const IMAGE_BASE_URL = "https://irmcintosh.github.io/games/paw-patrol/images/";
 
         // Map character name (key) to their catchphrase TEXT (for display) and the AUDIO FILE URL.
-        const AUDIO_URL_BASE = "https://yourdomain.com/audio/"; // *** CHANGE THIS TO YOUR HOSTED AUDIO FOLDER ***
+        // This base URL now points to the user-provided location for MP3 files.
+        const AUDIO_URL_BASE = "https://irmcintosh.github.io/games/paw-patrol/voices/"; 
 
         const PUPS_DATA = {
+            // NOTE: Ryder's audio file ('ryder.mp3') is assumed to be at the base URL.
+            // If it's not present, this sound will fail to play.
             'ryder': { text: "PAW Patrol is on a roll!", audio: AUDIO_URL_BASE + 'ryder.mp3' },
             'chase': { text: "Chase is on the case!", audio: AUDIO_URL_BASE + 'chase.mp3' },
             'marshall': { text: "Ready for a ruff-ruff-rescue!", audio: AUDIO_URL_BASE + 'marshall.mp3' },
             'sky': { text: "Let's take to the sky!", audio: AUDIO_URL_BASE + 'sky.mp3' },
             'rocky': { text: "Don't lose it, reuse it!", audio: AUDIO_URL_BASE + 'rocky.mp3' },
             'rubble': { text: "Rubble on the double!", audio: AUDIO_URL_BASE + 'rubble.mp3' },
-            'everest': { text: "Ice or snow, I'm ready to go!", audio: AUDIO_URL_BASE + 'everest.mp3' }, 
             'liberty': { text: "Liberty's ready to roll!", audio: AUDIO_URL_BASE + 'liberty.mp3' },
             'zuma': { text: "Ready, set, get wet!", audio: AUDIO_URL_BASE + 'zuma.mp3' },
         };
