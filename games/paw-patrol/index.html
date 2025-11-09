@@ -338,8 +338,8 @@
                     renderBoard(); // Re-render to update clickability
                     
                     if (matches === totalMatches) {
+                        displayMessage("Game Complete!", 6000);
                         displayMessage("No job is too big, no pup is too small!", 9000);
-                        displayMessage("No job is too big, no pup is too small! Game Complete!", 7000);
                         // Optional: play a success sound
                         // playSound(AUDIO_URL_BASE + 'success.mp3'); 
                         gameLocked = true;
