@@ -125,7 +125,7 @@
 <body class="selection:bg-yellow-400 selection:text-gray-800">
 
     <div id="gameContainer" class="relative">
-        <!-- Canvas for the main game -->
+        <!-- Canvas for the main game. This is where we'll detect the taps. -->
         <canvas id="gameCanvas" class="w-full"></canvas>
 
         <!-- Mobile Controls (for touch input) -->
@@ -590,11 +590,42 @@
                 player.isMovingRight = isKeyDown;
             }
         }
+        
+        // --- NEW: Handle Canvas Touch Input ---
+        function handleCanvasTouch(event, isStart) {
+            if (!isPlaying || event.touches.length === 0) return;
 
-        // --- Mobile Touch Controls Setup ---
+            // Get the touch location relative to the canvas
+            const touchX = event.touches[0].clientX;
+            const canvasRect = CANVAS.getBoundingClientRect();
+            const relativeX = touchX - canvasRect.left;
+
+            // Determine if touch is on the left half or the right half of the canvas
+            const isLeftHalf = relativeX < CANVAS.width / 2;
+
+            if (isStart) {
+                // Prevent horizontal scrolling on touch move
+                event.preventDefault(); 
+                
+                if (isLeftHalf) {
+                    player.isMovingLeft = true;
+                    player.isMovingRight = false;
+                } else {
+                    player.isMovingRight = true;
+                    player.isMovingLeft = false;
+                }
+            } else {
+                // On touch end, stop all horizontal movement
+                player.isMovingLeft = false;
+                player.isMovingRight = false;
+            }
+        }
+
+        // --- Mobile Touch Controls Setup (Buttons) ---
         const moveLeftBtn = document.getElementById('moveLeftBtn');
         const moveRightBtn = document.getElementById('moveRightBtn');
 
+        // Keep button listeners for users who prefer them or mouse clicks on mobile UI
         moveLeftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (isPlaying) player.isMovingLeft = true; });
         moveLeftBtn.addEventListener('touchend', () => { if (isPlaying) player.isMovingLeft = false; });
         moveLeftBtn.addEventListener('mousedown', (e) => { e.preventDefault(); if (isPlaying) player.isMovingLeft = true; });
@@ -619,6 +650,11 @@
             document.addEventListener('keydown', (e) => handleInput(e, true));
             document.addEventListener('keyup', (e) => handleInput(e, false));
             START_GAME_BTN.addEventListener('click', startGame);
+            
+            // --- Attach Canvas Touch Listeners (New Feature) ---
+            // Use passive: false to allow e.preventDefault() in touchstart to prevent scrolling
+            CANVAS.addEventListener('touchstart', (e) => handleCanvasTouch(e, true), { passive: false });
+            CANVAS.addEventListener('touchend', (e) => handleCanvasTouch(e, false));
 
             // Wait for Firebase to be ready before attempting to load high score
             window.addEventListener('firebase-ready', () => {
