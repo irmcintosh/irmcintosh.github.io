@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paw Patrol Jumper!</title>
+    <!-- Load Tailwind CSS for utility styling on the overall container and UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Font Awesome for simple icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f7f3e8; /* Light Sky/Sand color */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+        }
+        #gameContainer {
+            width: 100%;
+            max-width: 480px; /* Standard mobile width for the game area */
+            height: 90vh;
+            max-height: 800px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            border: 8px solid #333; /* Dark border for a playful look */
+        }
+        canvas {
+            background-color: #87CEEB; /* Light sky blue background */
+            display: block;
+            flex-grow: 1;
+        }
+        #uiOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            border-radius: 15px;
+        }
+        .ui-panel {
+            background: linear-gradient(145deg, #ffffff, #f0f0f0);
+            padding: 24px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            max-width: 90%;
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .pup-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+            border: 4px solid transparent;
+            position: relative;
+        }
+        .pup-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        }
+        .pup-card.selected {
+            border-color: #FFD700; /* Gold border for selected pup */
+            transform: scale(1.1);
+        }
+        .pup-icon {
+            font-size: 3rem;
+            line-height: 1;
+        }
+        /* Mobile Touch Controls */
+        #mobileControls {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            background-color: #333;
+            border-top: 4px solid #f9f9f9;
+        }
+        .control-button {
+            width: 45%;
+            padding: 12px 0;
+            background-color: #FFD700;
+            color: #333;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            box-shadow: 0 4px 0 #c0a800;
+            transition: all 0.1s;
+        }
+        .control-button:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #c0a800;
+        }
+        /* Hide controls on desktop */
+        @media (min-width: 600px) {
+            #mobileControls {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="selection:bg-yellow-400 selection:text-gray-800">
+
+    <div id="gameContainer" class="relative">
+        <!-- Canvas for the main game -->
+        <canvas id="gameCanvas" class="w-full"></canvas>
+
+        <!-- Mobile Controls (for touch input) -->
+        <div id="mobileControls" class="md:hidden">
+            <button id="moveLeftBtn" class="control-button"><i class="fas fa-arrow-left"></i> Left</button>
+            <button id="moveRightBtn" class="control-button">Right <i class="fas fa-arrow-right"></i></button>
+        </div>
+
+        <!-- Start/Game Over UI Overlay -->
+        <div id="uiOverlay" class="absolute inset-0">
+            <div id="menuPanel" class="ui-panel">
+                <h1 class="text-4xl font-bold text-blue-600 mb-6">PAW JUMPER!</h1>
+
+                <!-- Character Selection -->
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Choose Your Pup!</h2>
+                <div id="characterSelect" class="grid grid-cols-4 gap-4 mb-6 max-w-sm mx-auto">
+                    <!-- Cards will be populated by JS -->
+                </div>
+
+                <button id="startGameBtn" class="py-3 px-8 bg-green-500 text-white font-bold rounded-xl shadow-lg hover:bg-green-600 transition duration-150 transform hover:scale-105" disabled>
+                    <i class="fas fa-play"></i> Start Mission!
+                </button>
+
+                <div id="scoreDisplay" class="mt-4 text-xl font-bold text-gray-800 hidden">
+                    High Score: <span id="highScore">0</span> | Current Score: <span id="currentScore">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Set Firebase Log Level to Debug
+        setLogLevel('Debug');
+
+        // Global variables provided by the environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth;
+        let userId = null;
+        window.firebaseReady = false; // Global flag for JS game logic
+
+        if (firebaseConfig) {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                window.db = db; // Attach to window for use in game logic
+                
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        window.userId = userId;
+                        window.firebaseReady = true;
+                        console.log("Firebase Auth Ready. User ID:", userId);
+                        // Fetch high score once ready
+                        window.dispatchEvent(new CustomEvent('firebase-ready'));
+                    } else {
+                        // Attempt initial sign in if token is available
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                window.firebaseReady = true; // Still allow the game to run without persistence
+                window.dispatchEvent(new CustomEvent('firebase-ready'));
+            }
+        } else {
+            console.log("No Firebase config found. Running without persistence.");
+            window.firebaseReady = true;
+            window.dispatchEvent(new CustomEvent('firebase-ready'));
+        }
+
+        // --- Persistence Functions (Exported to global scope for use in game.js logic) ---
+        window.saveHighScore = async function(newHighScore) {
+            if (!window.firebaseReady || !userId || !db) return;
+            try {
+                const docPath = `/artifacts/${appId}/users/${userId}/paw_jumper/high_score`;
+                await setDoc(doc(db, docPath), { score: newHighScore, timestamp: Date.now() }, { merge: true });
+                console.log("High score saved:", newHighScore);
+            } catch (e) {
+                console.error("Error saving high score:", e);
+            }
+        };
+
+        window.loadHighScore = function(callback) {
+            if (!window.firebaseReady || !userId || !db) {
+                if(callback) callback(0);
+                return;
+            }
+            try {
+                const docPath = `/artifacts/${appId}/users/${userId}/paw_jumper/high_score`;
+                const docRef = doc(db, docPath);
+
+                onSnapshot(docRef, (docSnap) => {
+                    let score = 0;
+                    if (docSnap.exists()) {
+                        score = docSnap.data().score || 0;
+                    }
+                    if (callback) callback(score);
+                }, (error) => {
+                    console.error("Error setting up high score listener:", error);
+                    if (callback) callback(0);
+                });
+
+            } catch (e) {
+                console.error("Error loading high score:", e);
+                if (callback) callback(0);
+            }
+        };
+
+    </script>
+
+    <!-- Game Logic Script -->
+    <script>
+        // --- Game Constants ---
+        const CANVAS = document.getElementById('gameCanvas');
+        const CTX = CANVAS.getContext('2d');
+        const UI_OVERLAY = document.getElementById('uiOverlay');
+        const MENU_PANEL = document.getElementById('menuPanel');
+        const START_GAME_BTN = document.getElementById('startGameBtn');
+        const CHARACTER_SELECT = document.getElementById('characterSelect');
+        const HIGH_SCORE_SPAN = document.getElementById('highScore');
+        const CURRENT_SCORE_SPAN = document.getElementById('currentScore');
+        const SCORE_DISPLAY = document.getElementById('scoreDisplay');
+
+        const PUPA_DATA = [
+            { name: "Chase", color: "#0F4C81", icon: "👮" }, // Deep Blue, Police
+            { name: "Rubble", color: "#FBB03B", icon: "🏗️" }, // Yellow/Gold, Construction
+            { name: "Rocky", color: "#1E824C", icon: "♻️" }, // Green, Recycle
+            { name: "Marshall", color: "#C0392B", icon: "🔥" }, // Red, Firefighter
+            { name: "Skye", color: "#E91E63", icon: "🚁" }, // Pink, Pilot
+            { name: "Zuma", color: "#FF5722", icon: "🌊" }, // Orange, Aquatic
+            { name: "Liberty", color: "#FF6B6B", icon: "🗽" }, // Coral, City Dog
+        ];
+
+        // --- Game State Variables ---
+        let gameLoopId;
+        let isPlaying = false;
+        let isGameOver = false;
+
+        let player;
+        let platforms = [];
+        let gravity = 0.5;
+        let platformCount = 10;
+        let verticalOffset = 0; // Tracks how high the player has climbed
+        let currentScore = 0;
+        let highScore = 0;
+        let pupRadius = 20;
+
+        // --- Player Object ---
+        class Pup {
+            constructor(pupData) {
+                this.x = CANVAS.width / 2;
+                this.y = CANVAS.height - 50;
+                this.dx = 0; // Horizontal velocity
+                this.dy = 0; // Vertical velocity
+                this.width = pupRadius * 2;
+                this.height = pupRadius * 2;
+                this.speed = 8;
+                this.color = pupData.color;
+                this.name = pupData.name;
+                this.icon = pupData.icon;
+                this.isJumping = false;
+                this.isMovingLeft = false;
+                this.isMovingRight = false;
+            }
+
+            draw() {
+                // Draw the pup (circle body)
+                CTX.beginPath();
+                CTX.arc(this.x, this.y - pupRadius, pupRadius, 0, Math.PI * 2);
+                CTX.fillStyle = this.color;
+                CTX.fill();
+                CTX.lineWidth = 2;
+                CTX.strokeStyle = '#333';
+                CTX.stroke();
+                CTX.closePath();
+
+                // Draw the icon/emoji on the pup
+                CTX.font = '24px Fredoka';
+                CTX.textAlign = 'center';
+                CTX.textBaseline = 'middle';
+                CTX.fillStyle = '#fff';
+                CTX.fillText(this.icon, this.x, this.y - pupRadius + 2); // Center the emoji
+            }
+
+            update() {
+                // Apply horizontal movement
+                if (this.isMovingLeft) {
+                    this.dx = -this.speed;
+                } else if (this.isMovingRight) {
+                    this.dx = this.speed;
+                } else {
+                    // Smooth slow-down if no keys are pressed (simulates friction)
+                    this.dx *= 0.8;
+                    if (Math.abs(this.dx) < 0.5) this.dx = 0;
+                }
+
+                this.x += this.dx;
+
+                // Wrap player around screen edges
+                if (this.x < 0) this.x = CANVAS.width;
+                if (this.x > CANVAS.width) this.x = 0;
+
+                // Apply gravity
+                this.dy += gravity;
+                this.y += this.dy;
+            }
+
+            jump() {
+                this.dy = -15; // Set a strong upward velocity
+                this.isJumping = true;
+            }
+        }
+
+        // --- Platform Object ---
+        class Platform {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 100 + Math.random() * 50; // Random width
+                this.height = 10;
+                this.color = '#388E3C'; // Green for the "ground"
+                this.pupPrintColor = '#222';
+            }
+
+            draw() {
+                CTX.fillStyle = this.color;
+                CTX.fillRect(this.x - this.width / 2, this.y, this.width, this.height);
+                CTX.strokeStyle = '#2E7D32';
+                CTX.lineWidth = 2;
+                CTX.strokeRect(this.x - this.width / 2, this.y, this.width, this.height);
+
+                // Draw simple paw print on the platform (optional detail)
+                CTX.fillStyle = this.pupPrintColor;
+                CTX.font = '12px Fredoka';
+                CTX.textAlign = 'center';
+                CTX.fillText('🐾', this.x, this.y + 8);
+            }
+        }
+
+        // --- Game Setup Functions ---
+
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            CANVAS.width = container.clientWidth;
+            CANVAS.height = container.clientHeight - (document.getElementById('mobileControls').offsetHeight || 0);
+            if (player) {
+                // Reset player position on resize
+                player.x = CANVAS.width / 2;
+            }
+            if (isPlaying) {
+                draw(); // Redraw immediately on resize
+            }
+        }
+
+        function createInitialPlatforms() {
+            platforms = [];
+            verticalOffset = 0;
+            platforms.push(new Platform(CANVAS.width / 2, CANVAS.height - 20)); // Starting platform
+
+            for (let i = 1; i < platformCount; i++) {
+                const x = Math.random() * (CANVAS.width * 0.8) + (CANVAS.width * 0.1);
+                const y = CANVAS.height - 20 - (i * (CANVAS.height / platformCount) * 0.8) - 100;
+                platforms.push(new Platform(x, y));
+            }
+        }
+
+        function populateCharacterSelect() {
+            CHARACTER_SELECT.innerHTML = PUPA_DATA.map(pup => `
+                <div class="pup-card p-2 rounded-xl" data-name="${pup.name}" data-color="${pup.color}" data-icon="${pup.icon}">
+                    <div class="pup-icon" style="color: ${pup.color};">${pup.icon}</div>
+                    <p class="text-sm font-semibold">${pup.name}</p>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.pup-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.pup-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    START_GAME_BTN.disabled = false;
+                    const selectedPup = PUPA_DATA.find(p => p.name === card.dataset.name);
+                    player = new Pup(selectedPup);
+                });
+            });
+        }
+
+        // --- Game Loop and Logic ---
+
+        function updateGame() {
+            player.update();
+
+            // Scrolling logic (move everything down if player is high enough)
+            if (player.y < CANVAS.height / 2 - 50 && player.dy < 0) {
+                // Move platforms and player down
+                verticalOffset -= player.dy; // Increase vertical score
+                currentScore = Math.floor(verticalOffset / 10);
+                CURRENT_SCORE_SPAN.textContent = currentScore;
+
+                platforms.forEach(p => p.y -= player.dy);
+                player.y = CANVAS.height / 2 - 50; // Keep player in the middle of the screen
+            }
+
+            // Check for collisions (Platform logic)
+            platforms.forEach(p => {
+                // Check if the player is falling and near the platform
+                if (player.dy > 0 &&
+                    player.x + pupRadius > p.x - p.width / 2 &&
+                    player.x - pupRadius < p.x + p.width / 2 &&
+                    player.y + pupRadius < p.y + p.height &&
+                    player.y + pupRadius > p.y) {
+                    
+                    player.y = p.y - pupRadius; // Snap to the top of the platform
+                    player.jump(); // Jump again!
+                }
+            });
+
+            // Platform generation and cleanup
+            platforms = platforms.filter(p => p.y < CANVAS.height);
+
+            while (platforms.length < platformCount) {
+                // Generate new platforms above the current highest one
+                const lastY = platforms.length > 0 ? platforms[platforms.length - 1].y : 0;
+                const minGap = 50;
+                const maxGap = 150;
+                
+                const newY = lastY - minGap - Math.random() * (maxGap - minGap);
+                const newX = Math.random() * (CANVAS.width * 0.8) + (CANVAS.width * 0.1);
+
+                platforms.push(new Platform(newX, newY));
+                
+                // Keep the number of platforms reasonable
+                if (platforms.length > platformCount + 5) platforms.shift();
+            }
+
+            // Check for Game Over (falling off the bottom)
+            if (player.y - pupRadius > CANVAS.height) {
+                gameOver();
+            }
+        }
+
+        function draw() {
+            CTX.clearRect(0, 0, CANVAS.width, CANVAS.height);
+
+            // Draw current score
+            CTX.fillStyle = '#fff';
+            CTX.font = '24px Fredoka';
+            CTX.textAlign = 'left';
+            CTX.fillText(`Score: ${currentScore}`, 10, 30);
+            
+            // Draw all platforms
+            platforms.forEach(p => p.draw());
+
+            // Draw player
+            player.draw();
+        }
+
+        function gameLoop() {
+            if (!isPlaying) return;
+            updateGame();
+            draw();
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            if (!player) return;
+
+            // Hide UI
+            UI_OVERLAY.style.display = 'none';
+            isGameOver = false;
+            isPlaying = true;
+            
+            // Reset game state
+            currentScore = 0;
+            CURRENT_SCORE_SPAN.textContent = 0;
+            
+            player.x = CANVAS.width / 2;
+            player.y = CANVAS.height - 50;
+            player.dy = 0;
+            player.dx = 0;
+
+            createInitialPlatforms();
+            player.jump(); // Give the first jump
+            gameLoop();
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            isGameOver = true;
+            cancelAnimationFrame(gameLoopId);
+
+            // Update High Score
+            if (currentScore > highScore) {
+                highScore = currentScore;
+                HIGH_SCORE_SPAN.textContent = highScore;
+                window.saveHighScore(highScore); // Save to Firebase
+            }
+
+            // Show Game Over UI
+            MENU_PANEL.innerHTML = `
+                <h1 class="text-5xl font-bold text-red-600 mb-4">MISSION FAILED!</h1>
+                <p class="text-2xl text-gray-800 mb-2">${player.name}'s Score: <span class="text-red-600 font-extrabold">${currentScore}</span></p>
+                <p class="text-2xl text-gray-800 mb-6">High Score: <span class="text-blue-600 font-extrabold">${highScore}</span></p>
+                <button id="restartGameBtn" class="py-3 px-8 bg-blue-500 text-white font-bold rounded-xl shadow-lg hover:bg-blue-600 transition duration-150 transform hover:scale-105">
+                    <i class="fas fa-redo"></i> Try Again!
+                </button>
+            `;
+            UI_OVERLAY.style.display = 'flex';
+
+            document.getElementById('restartGameBtn').addEventListener('click', () => {
+                // Re-initialize the menu panel on restart
+                location.reload(); 
+            });
+        }
+
+        // --- Input Handling ---
+
+        function handleInput(event, isKeyDown) {
+            // Only respond to input if the game is playing
+            if (!isPlaying) return;
+
+            // Desktop Keyboard Controls
+            if (event.code === 'ArrowLeft' || event.key === 'a' || event.key === 'A') {
+                player.isMovingLeft = isKeyDown;
+            } else if (event.code === 'ArrowRight' || event.key === 'd' || event.key === 'D') {
+                player.isMovingRight = isKeyDown;
+            }
+        }
+
+        // --- Mobile Touch Controls Setup ---
+        const moveLeftBtn = document.getElementById('moveLeftBtn');
+        const moveRightBtn = document.getElementById('moveRightBtn');
+
+        moveLeftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (isPlaying) player.isMovingLeft = true; });
+        moveLeftBtn.addEventListener('touchend', () => { if (isPlaying) player.isMovingLeft = false; });
+        moveLeftBtn.addEventListener('mousedown', (e) => { e.preventDefault(); if (isPlaying) player.isMovingLeft = true; });
+        moveLeftBtn.addEventListener('mouseup', () => { if (isPlaying) player.isMovingLeft = false; });
+        moveLeftBtn.addEventListener('mouseleave', () => { if (isPlaying) player.isMovingLeft = false; }); // For desktop mouse drag off button
+
+        moveRightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (isPlaying) player.isMovingRight = true; });
+        moveRightBtn.addEventListener('touchend', () => { if (isPlaying) player.isMovingRight = false; });
+        moveRightBtn.addEventListener('mousedown', (e) => { e.preventDefault(); if (isPlaying) player.isMovingRight = true; });
+        moveRightBtn.addEventListener('mouseup', () => { if (isPlaying) player.isMovingRight = false; });
+        moveRightBtn.addEventListener('mouseleave', () => { if (isPlaying) player.isMovingRight = false; });
+
+        // --- Initialization ---
+
+        window.onload = function() {
+            // Initial setup
+            populateCharacterSelect();
+            resizeCanvas();
+
+            // Event listeners
+            window.addEventListener('resize', resizeCanvas);
+            document.addEventListener('keydown', (e) => handleInput(e, true));
+            document.addEventListener('keyup', (e) => handleInput(e, false));
+            START_GAME_BTN.addEventListener('click', startGame);
+
+            // Wait for Firebase to be ready before attempting to load high score
+            window.addEventListener('firebase-ready', () => {
+                window.loadHighScore((score) => {
+                    highScore = score;
+                    HIGH_SCORE_SPAN.textContent = highScore;
+                });
+                SCORE_DISPLAY.classList.remove('hidden');
+            });
+        };
+    </script>
+</body>
+</html>
