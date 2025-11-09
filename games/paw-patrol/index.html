@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Paw Patrol Memory Game - Image Match (Pre-recorded Audio)</title>
+    <title>Paw Patrol Memory Game - Image Match</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom styles for the Paw Patrol theme */
@@ -338,7 +338,8 @@
                     renderBoard(); // Re-render to update clickability
                     
                     if (matches === totalMatches) {
-                        displayMessage("No job is too big, no pup is too small! Game Complete!", 5000);
+                        displayMessage("No job is too big, no pup is too small!", 9000);
+                        displayMessage("No job is too big, no pup is too small! Game Complete!", 7000);
                         // Optional: play a success sound
                         // playSound(AUDIO_URL_BASE + 'success.mp3'); 
                         gameLocked = true;
