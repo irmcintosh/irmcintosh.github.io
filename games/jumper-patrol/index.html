@@ -81,10 +81,16 @@
             border-color: #FFD700; /* Gold border for selected pup */
             transform: scale(1.1);
         }
-        .pup-icon {
-            font-size: 3rem;
-            line-height: 1;
+        .pup-card img {
+            height: 50px; /* Standardize image size in the card */
+            width: 50px;
+            margin: 0 auto 4px;
+            border-radius: 8px;
+            object-fit: contain;
+            /* Placeholder for image load failure */
+            background-color: #ccc;
         }
+
         /* Mobile Touch Controls */
         #mobileControls {
             display: flex;
@@ -175,7 +181,7 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
                 window.db = db; // Attach to window for use in game logic
-                
+
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
@@ -257,14 +263,16 @@
         const CURRENT_SCORE_SPAN = document.getElementById('currentScore');
         const SCORE_DISPLAY = document.getElementById('scoreDisplay');
 
+        const BASE_IMAGE_URL = "https://irmcintosh.github.io/games/jumper-patrol/images/";
+
         const PUPA_DATA = [
-            { name: "Chase", color: "#0F4C81", icon: "👮" }, // Deep Blue, Police
-            { name: "Rubble", color: "#FBB03B", icon: "🏗️" }, // Yellow/Gold, Construction
-            { name: "Rocky", color: "#1E824C", icon: "♻️" }, // Green, Recycle
-            { name: "Marshall", color: "#C0392B", icon: "🔥" }, // Red, Firefighter
-            { name: "Skye", color: "#E91E63", icon: "🚁" }, // Pink, Pilot
-            { name: "Zuma", color: "#FF5722", icon: "🌊" }, // Orange, Aquatic
-            { name: "Liberty", color: "#FF6B6B", icon: "🗽" }, // Coral, City Dog
+            { name: "Chase", color: "#0F4C81", icon: "👮", imgUrl: BASE_IMAGE_URL + "chase.png" },
+            { name: "Rubble", color: "#FBB03B", icon: "🏗️", imgUrl: BASE_IMAGE_URL + "rubble.png" },
+            { name: "Rocky", color: "#1E824C", icon: "♻️", imgUrl: BASE_IMAGE_URL + "rocky.png" },
+            { name: "Marshall", color: "#C0392B", icon: "🔥", imgUrl: BASE_IMAGE_URL + "marshall.png" },
+            { name: "Sky", color: "#E91E63", icon: "🚁", imgUrl: BASE_IMAGE_URL + "sky.png" },
+            { name: "Zuma", color: "#FF5722", icon: "🌊", imgUrl: BASE_IMAGE_URL + "zuma.png" },
+            { name: "Liberty", color: "#FF6B6B", icon: "🗽", imgUrl: BASE_IMAGE_URL + "liberty.png" },
         ];
 
         // --- Game State Variables ---
@@ -279,17 +287,18 @@
         let verticalOffset = 0; // Tracks how high the player has climbed
         let currentScore = 0;
         let highScore = 0;
-        let pupRadius = 20;
+        let pupRadius = 25; // Increased size for better visibility
+        let pupSize = pupRadius * 2; // 50px
 
         // --- Player Object ---
         class Pup {
             constructor(pupData) {
                 this.x = CANVAS.width / 2;
-                this.y = CANVAS.height - 50;
+                this.y = CANVAS.height - pupSize/2; // Position at the base
                 this.dx = 0; // Horizontal velocity
                 this.dy = 0; // Vertical velocity
-                this.width = pupRadius * 2;
-                this.height = pupRadius * 2;
+                this.width = pupSize;
+                this.height = pupSize;
                 this.speed = 8;
                 this.color = pupData.color;
                 this.name = pupData.name;
@@ -297,25 +306,45 @@
                 this.isJumping = false;
                 this.isMovingLeft = false;
                 this.isMovingRight = false;
+
+                // Load the character image
+                this.img = new Image();
+                this.img.src = pupData.imgUrl;
+                this.hasImage = true;
+                this.img.onerror = () => {
+                    console.warn(`Failed to load image for ${this.name}. Using fallback.`);
+                    this.hasImage = false;
+                };
             }
 
             draw() {
-                // Draw the pup (circle body)
-                CTX.beginPath();
-                CTX.arc(this.x, this.y - pupRadius, pupRadius, 0, Math.PI * 2);
-                CTX.fillStyle = this.color;
-                CTX.fill();
-                CTX.lineWidth = 2;
-                CTX.strokeStyle = '#333';
-                CTX.stroke();
-                CTX.closePath();
+                // Check if image is loaded and valid, otherwise use fallback
+                if (this.hasImage && this.img.complete && this.img.naturalWidth !== 0) {
+                    // Draw the image, centered on this.x, with its base at this.y
+                    CTX.drawImage(
+                        this.img,
+                        this.x - this.width / 2, // Top-left X
+                        this.y - this.height,     // Top-left Y (place image above the Y position)
+                        this.width,
+                        this.height
+                    );
+                } else {
+                    // Fallback to previous drawing (colored circle and emoji)
+                    CTX.beginPath();
+                    CTX.arc(this.x, this.y - pupRadius, pupRadius, 0, Math.PI * 2);
+                    CTX.fillStyle = this.color;
+                    CTX.fill();
+                    CTX.lineWidth = 2;
+                    CTX.strokeStyle = '#333';
+                    CTX.stroke();
+                    CTX.closePath();
 
-                // Draw the icon/emoji on the pup
-                CTX.font = '24px Fredoka';
-                CTX.textAlign = 'center';
-                CTX.textBaseline = 'middle';
-                CTX.fillStyle = '#fff';
-                CTX.fillText(this.icon, this.x, this.y - pupRadius + 2); // Center the emoji
+                    CTX.font = '24px Fredoka';
+                    CTX.textAlign = 'center';
+                    CTX.textBaseline = 'middle';
+                    CTX.fillStyle = '#fff';
+                    CTX.fillText(this.icon, this.x, this.y - pupRadius + 2);
+                }
             }
 
             update() {
@@ -402,8 +431,8 @@
 
         function populateCharacterSelect() {
             CHARACTER_SELECT.innerHTML = PUPA_DATA.map(pup => `
-                <div class="pup-card p-2 rounded-xl" data-name="${pup.name}" data-color="${pup.color}" data-icon="${pup.icon}">
-                    <div class="pup-icon" style="color: ${pup.color};">${pup.icon}</div>
+                <div class="pup-card p-2 rounded-xl" data-name="${pup.name}" data-color="${pup.color}" data-icon="${pup.icon}" data-imgurl="${pup.imgUrl}">
+                    <img src="${pup.imgUrl}" alt="${pup.name} image" class="w-full h-auto object-contain mx-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/333/fff?text=${pup.name}'">
                     <p class="text-sm font-semibold">${pup.name}</p>
                 </div>
             `).join('');
@@ -438,13 +467,14 @@
             // Check for collisions (Platform logic)
             platforms.forEach(p => {
                 // Check if the player is falling and near the platform
+                // Player's feet are at player.y, collision check area is from player.y - height/2 to player.y
                 if (player.dy > 0 &&
-                    player.x + pupRadius > p.x - p.width / 2 &&
-                    player.x - pupRadius < p.x + p.width / 2 &&
-                    player.y + pupRadius < p.y + p.height &&
-                    player.y + pupRadius > p.y) {
-                    
-                    player.y = p.y - pupRadius; // Snap to the top of the platform
+                    player.x + pupRadius > p.x - p.width / 2 && // right side of pup past platform left
+                    player.x - pupRadius < p.x + p.width / 2 && // left side of pup past platform right
+                    player.y < p.y + p.height && // player's base is below platform top
+                    player.y > p.y) { // player's base is above platform top (i.e. landing on it)
+
+                    player.y = p.y; // Snap to the top of the platform (feet level)
                     player.jump(); // Jump again!
                 }
             });
@@ -457,18 +487,18 @@
                 const lastY = platforms.length > 0 ? platforms[platforms.length - 1].y : 0;
                 const minGap = 50;
                 const maxGap = 150;
-                
+
                 const newY = lastY - minGap - Math.random() * (maxGap - minGap);
                 const newX = Math.random() * (CANVAS.width * 0.8) + (CANVAS.width * 0.1);
 
                 platforms.push(new Platform(newX, newY));
-                
+
                 // Keep the number of platforms reasonable
                 if (platforms.length > platformCount + 5) platforms.shift();
             }
 
             // Check for Game Over (falling off the bottom)
-            if (player.y - pupRadius > CANVAS.height) {
+            if (player.y - pupSize/2 > CANVAS.height) { // Check if the center of the pup is below the canvas
                 gameOver();
             }
         }
@@ -481,7 +511,7 @@
             CTX.font = '24px Fredoka';
             CTX.textAlign = 'left';
             CTX.fillText(`Score: ${currentScore}`, 10, 30);
-            
+
             // Draw all platforms
             platforms.forEach(p => p.draw());
 
@@ -503,13 +533,13 @@
             UI_OVERLAY.style.display = 'none';
             isGameOver = false;
             isPlaying = true;
-            
+
             // Reset game state
             currentScore = 0;
             CURRENT_SCORE_SPAN.textContent = 0;
-            
+
             player.x = CANVAS.width / 2;
-            player.y = CANVAS.height - 50;
+            player.y = CANVAS.height - pupSize/2;
             player.dy = 0;
             player.dx = 0;
 
@@ -543,7 +573,7 @@
 
             document.getElementById('restartGameBtn').addEventListener('click', () => {
                 // Re-initialize the menu panel on restart
-                location.reload(); 
+                location.reload();
             });
         }
 
